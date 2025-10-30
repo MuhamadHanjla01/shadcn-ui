@@ -1,33 +1,29 @@
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
 
-// Storage version - increment this when structure changes
-// User data (images, content) is now preserved during version updates
-const STORAGE_VERSION = '2.3.0'; // Fixed: Theme syncs across devices
+// NEW SYSTEM: Data stored in portfolio-data.json (deployed with code)
+// localStorage only used for admin editing (not for displaying to public)
+const STORAGE_VERSION = '3.0.0'; // Major change: JSON-based storage
 const VERSION_KEY = 'portfolio_storage_version';
+
+// Check if we're in admin context
+const isAdminContext = () => {
+  return window.location.pathname.includes('/admin');
+};
 
 // Check and clear old storage if version mismatch
 const checkStorageVersion = () => {
   try {
     const currentVersion = localStorage.getItem(VERSION_KEY);
     if (currentVersion !== STORAGE_VERSION) {
-      // Save user-uploaded content before clearing
-      const userDataBackup = localStorage.getItem('portfolio_user_data');
-      const projectsBackup = localStorage.getItem('portfolio_projects');
-      const blogPostsBackup = localStorage.getItem('portfolio_blog_posts');
-      const siteSettingsBackup = localStorage.getItem('portfolio_site_settings');
+      console.log('⚠️ Storage structure changed. localStorage is now only for admin editing.');
+      console.log('📦 Public data now loads from portfolio-data.json file.');
       
-      // Clear all portfolio data (keep only version)
+      // Clear old localStorage (no longer the source of truth)
       const keysToRemove = Object.keys(localStorage).filter(key => key.startsWith('portfolio_'));
       keysToRemove.forEach(key => localStorage.removeItem(key));
       
-      // Restore user-uploaded content (profile images, custom data)
-      if (userDataBackup) localStorage.setItem('portfolio_user_data', userDataBackup);
-      if (projectsBackup) localStorage.setItem('portfolio_projects', projectsBackup);
-      if (blogPostsBackup) localStorage.setItem('portfolio_blog_posts', blogPostsBackup);
-      if (siteSettingsBackup) localStorage.setItem('portfolio_site_settings', siteSettingsBackup);
-      
       localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
-      console.log('Storage migrated to version:', currentVersion, '→', STORAGE_VERSION);
+      console.log('Storage upgraded to version:', STORAGE_VERSION);
     }
   } catch (error) {
     console.error('Error checking storage version:', error);
@@ -79,8 +75,20 @@ export const saveToStorage = <T>(key: string, data: T): void => {
 
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   try {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : defaultValue;
+    // Only load from localStorage in admin context
+    // Public pages always use default (from JSON file)
+    if (isAdminContext()) {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        console.log(`📖 [ADMIN] Loading ${key} from localStorage`);
+        return JSON.parse(stored);
+      }
+      // Admin but no localStorage - use default from JSON
+      console.log(`📦 [ADMIN-FALLBACK] Loading ${key} from portfolio-data.json`);
+      return defaultValue;
+    }
+    console.log(`📦 [PUBLIC] Loading ${key} from portfolio-data.json`);
+    return defaultValue;
   } catch (error) {
     console.error('Error loading from storage:', error);
     return defaultValue;

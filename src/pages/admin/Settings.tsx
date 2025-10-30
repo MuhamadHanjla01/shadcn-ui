@@ -25,9 +25,24 @@ import {
   Trash2,
   Plus,
   Twitter,
-  Share2
+  Share2,
+  Download
 } from 'lucide-react';
-import { loadSiteSettings, saveSiteSettings, SiteSettings, clearAllStorage } from '@/lib/storage';
+import { 
+  loadSiteSettings, 
+  saveSiteSettings, 
+  SiteSettings, 
+  clearAllStorage,
+  loadUserData,
+  loadSkills,
+  loadExperiences,
+  loadAchievements,
+  loadProjects,
+  loadBlogPosts,
+  loadStats,
+  loadThemeSettings
+} from '@/lib/storage';
+import { defaultData } from '@/lib/data';
 import { toast } from 'sonner';
 
 const Settings = () => {
@@ -77,6 +92,42 @@ const Settings = () => {
     if (confirm('Are you sure you want to reset all data? This action cannot be undone.')) {
       clearAllStorage();
       window.location.reload();
+    }
+  };
+
+  const handleExportData = () => {
+    try {
+      // Gather all current data from localStorage
+      const exportData = {
+        userData: loadUserData(defaultData.userData),
+        skills: loadSkills(defaultData.skills),
+        experiences: loadExperiences(defaultData.experiences),
+        achievements: loadAchievements(defaultData.achievements),
+        projects: loadProjects(defaultData.projects),
+        blogPosts: loadBlogPosts(defaultData.blogPosts),
+        stats: loadStats(defaultData.stats),
+        siteSettings: settings,
+        themeSettings: loadThemeSettings()
+      };
+
+      // Convert to JSON with pretty printing
+      const jsonString = JSON.stringify(exportData, null, 2);
+      
+      // Create blob and download
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'portfolio-data.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success('Data exported successfully! Replace src/lib/portfolio-data.json with this file and git push to deploy.');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast.error('Failed to export data');
     }
   };
 
@@ -141,23 +192,33 @@ const Settings = () => {
             Configure everything from favicon to footer
           </p>
         </div>
-        <Button 
-          onClick={handleSave}
-          disabled={isSaving}
-          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-        >
-          {isSaving ? (
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              <span>Saving...</span>
-            </div>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save All Settings
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleExportData}
+            variant="outline"
+            className="border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Data
+          </Button>
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          >
+            {isSaving ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Saving...</span>
+              </div>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save All Settings
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {saveStatus === 'success' && (
