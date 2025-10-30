@@ -17,23 +17,82 @@ const Layout = ({ children }: LayoutProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
+  // Load theme with real-time sync
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setIsDark(savedTheme === 'dark' || (!savedTheme && prefersDark));
+    const loadTheme = () => {
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+      setIsDark(shouldBeDark);
+      console.log('🎨 Theme loaded:', shouldBeDark ? 'dark' : 'light');
+    };
+    
+    loadTheme();
+    
+    // Listen for theme changes from other tabs/devices
+    const handleThemeUpdate = () => {
+      console.log('✨ Theme change detected - syncing...');
+      loadTheme();
+    };
+    
+    window.addEventListener('themeChanged', handleThemeUpdate);
+    window.addEventListener('storage', handleThemeUpdate);
+    window.addEventListener('portfolioDataUpdated', handleThemeUpdate);
+    window.addEventListener('forceDataReload', handleThemeUpdate);
+    
+    return () => {
+      window.removeEventListener('themeChanged', handleThemeUpdate);
+      window.removeEventListener('storage', handleThemeUpdate);
+      window.removeEventListener('portfolioDataUpdated', handleThemeUpdate);
+      window.removeEventListener('forceDataReload', handleThemeUpdate);
+    };
   }, []);
 
+  // Load site settings with real-time sync
   useEffect(() => {
-    const load = () => setSiteSettings(loadSiteSettings());
+    const load = () => {
+      console.log('🔄 Reloading site settings...');
+      setSiteSettings(loadSiteSettings());
+    };
     load();
-    const onUpdate = () => load();
+    
+    const onUpdate = () => {
+      console.log('✨ Settings update detected');
+      load();
+    };
+    
     window.addEventListener('portfolioDataUpdated', onUpdate);
-    return () => window.removeEventListener('portfolioDataUpdated', onUpdate);
+    window.addEventListener('storage', onUpdate);
+    window.addEventListener('forceDataReload', onUpdate);
+    window.addEventListener('focus', onUpdate);
+    
+    return () => {
+      window.removeEventListener('portfolioDataUpdated', onUpdate);
+      window.removeEventListener('storage', onUpdate);
+      window.removeEventListener('forceDataReload', onUpdate);
+      window.removeEventListener('focus', onUpdate);
+    };
   }, []);
 
+  // Apply theme and broadcast changes
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    const themeValue = isDark ? 'dark' : 'light';
+    localStorage.setItem('theme', themeValue);
+    
+    // Broadcast theme change to all tabs/pages
+    window.dispatchEvent(new CustomEvent('themeChanged', { 
+      detail: { theme: themeValue } 
+    }));
+    
+    // Also trigger storage event for cross-tab sync
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'theme',
+      newValue: themeValue,
+      url: window.location.href
+    }));
+    
+    console.log('🎨 Theme applied:', themeValue);
   }, [isDark]);
 
   const navigation = [

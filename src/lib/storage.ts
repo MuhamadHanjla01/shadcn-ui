@@ -2,7 +2,7 @@ import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@
 
 // Storage version - increment this when structure changes
 // User data (images, content) is now preserved during version updates
-const STORAGE_VERSION = '2.2.0'; // Fixed: Profile images now persist
+const STORAGE_VERSION = '2.3.0'; // Fixed: Theme syncs across devices
 const VERSION_KEY = 'portfolio_storage_version';
 
 // Check and clear old storage if version mismatch

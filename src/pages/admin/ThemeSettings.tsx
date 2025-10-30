@@ -26,6 +26,14 @@ const ThemeSettingsPage = () => {
     try {
       saveThemeSettings(settings);
       saveSiteSettings(siteSettings);
+      
+      // Broadcast theme changes to all tabs/pages
+      window.dispatchEvent(new CustomEvent('themeChanged', { 
+        detail: { settings, siteSettings } 
+      }));
+      
+      console.log('🎨 Theme settings saved and broadcasted');
+      
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
