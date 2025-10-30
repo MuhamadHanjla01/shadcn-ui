@@ -1,7 +1,7 @@
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
 
 // Storage version - increment this to force clear old data
-const STORAGE_VERSION = '2.0.0';
+const STORAGE_VERSION = '2.1.0'; // Updated for mobile cache fix
 const VERSION_KEY = 'portfolio_storage_version';
 
 // Check and clear old storage if version mismatch
