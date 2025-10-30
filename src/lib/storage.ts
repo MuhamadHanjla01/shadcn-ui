@@ -1,5 +1,28 @@
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
 
+// Storage version - increment this to force clear old data
+const STORAGE_VERSION = '2.0.0';
+const VERSION_KEY = 'portfolio_storage_version';
+
+// Check and clear old storage if version mismatch
+const checkStorageVersion = () => {
+  try {
+    const currentVersion = localStorage.getItem(VERSION_KEY);
+    if (currentVersion !== STORAGE_VERSION) {
+      // Clear all portfolio data (keep only version)
+      const keysToRemove = Object.keys(localStorage).filter(key => key.startsWith('portfolio_'));
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
+      console.log('Storage cleared due to version update:', currentVersion, '→', STORAGE_VERSION);
+    }
+  } catch (error) {
+    console.error('Error checking storage version:', error);
+  }
+};
+
+// Run version check on module load
+checkStorageVersion();
+
 // Local storage utility for persisting admin changes
 const STORAGE_KEYS = {
   USER_DATA: 'portfolio_user_data',

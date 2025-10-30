@@ -1,19 +1,19 @@
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
 import { loadUserData, loadSkills, loadExperiences, loadAchievements, loadProjects, loadBlogPosts, loadStats } from './storage';
 
-// Default data
+// Default data - Update this in Admin Panel after deployment
 const defaultUserData: User = {
-  name: "Alex Chen",
+  name: "Muhamad Hanjla",
   title: "Full Stack Developer",
   tagline: "Crafting digital experiences with cutting-edge technology",
-  bio: "Passionate full-stack developer with 5+ years of experience building scalable web applications. I specialize in React, Node.js, and cloud technologies, with a focus on creating intuitive user experiences and robust backend systems.",
+  bio: "Passionate full-stack developer with experience building scalable web applications. I specialize in React, TypeScript, and modern web technologies, with a focus on creating intuitive user experiences and robust systems.",
   profileImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
   resume: "/resume.pdf",
   socialMedia: {
-    github: "https://github.com/alexchen",
-    linkedin: "https://linkedin.com/in/alexchen",
-    twitter: "https://twitter.com/alexchen",
-    email: "alex@example.com"
+    github: "https://github.com/MuhamadHanjla01",
+    linkedin: "https://linkedin.com/in/muhamadhanjla",
+    twitter: "https://twitter.com/muhamadhanjla",
+    email: "contact@example.com"
   }
 };
 
