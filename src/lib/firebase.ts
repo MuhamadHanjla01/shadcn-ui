@@ -1,5 +1,6 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
 // Firebase configuration
 // IMPORTANT: Replace these values with your own Firebase project configuration
@@ -32,16 +33,21 @@ export const isFirebaseConfigured = (): boolean => {
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
+let db: Firestore | null = null;
 
 // Initialize Firebase only if properly configured
 if (isFirebaseConfigured()) {
   try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
+    db = getFirestore(app);
+    console.log('🔥 Firebase initialized successfully!');
   } catch (error) {
-    console.warn('Firebase initialization failed. Falling back to local authentication.', error);
+    console.warn('Firebase initialization failed. Falling back to local storage.', error);
   }
+} else {
+  console.warn('⚠️ Firebase not configured. Using localStorage fallback. For real-time updates, configure Firebase in src/lib/firebase.ts');
 }
 
-export { auth };
+export { auth, db };
 export default app;

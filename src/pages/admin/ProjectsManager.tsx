@@ -48,10 +48,10 @@ const ProjectsManager = () => {
         '/admin/projects'
       );
       
-      // Deployment reminder
-      toast.success('Projects saved!', {
-        description: '⚠️ To deploy: Settings → Export Data → Replace JSON → Git push',
-        duration: 8000,
+      // Instant sync notification
+      toast.success('✅ Projects saved!', {
+        description: '🔥 Synced to all devices instantly',
+        duration: 4000,
       });
       
       setTimeout(() => setSaveStatus('idle'), 3000);

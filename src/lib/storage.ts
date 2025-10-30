@@ -1,4 +1,5 @@
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
+import { RealtimeStorage } from './realtime-storage';
 
 // NEW SYSTEM: Data stored in portfolio-data.json (deployed with code)
 // localStorage only used for admin editing (not for displaying to public)
@@ -48,10 +49,16 @@ const STORAGE_KEYS = {
   STATS: 'portfolio_stats'
 } as const;
 
-// Generic storage functions
+// Generic storage functions with real-time Firebase support
 export const saveToStorage = <T>(key: string, data: T): void => {
   try {
+    // Save to localStorage immediately (synchronous)
     localStorage.setItem(key, JSON.stringify(data));
+    
+    // Save to Firebase (asynchronous, real-time for all users)
+    RealtimeStorage.save(key, data).catch(error => {
+      console.error(`Error saving ${key} to Firebase:`, error);
+    });
     
     // Multiple dispatch methods for maximum reliability
     // 1. Custom event
@@ -67,7 +74,7 @@ export const saveToStorage = <T>(key: string, data: T): void => {
     // 3. Force page reload event
     window.dispatchEvent(new CustomEvent('forceDataReload', { detail: { key } }));
     
-    console.log(`💾 Saved ${key} - Broadcasting updates...`);
+    console.log(`💾 Saved ${key} - Broadcasting to all devices...`);
   } catch (error) {
     console.error('Error saving to storage:', error);
   }

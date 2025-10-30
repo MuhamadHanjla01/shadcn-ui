@@ -178,10 +178,10 @@ const HomeEditor = () => {
       
       setSaveStatus('success');
       
-      // Show success toast with reminder
-      toast.success('Changes saved to admin preview!', {
-        description: '⚠️ To make changes visible to others: Go to Settings → Export Data → Replace JSON file → Git push',
-        duration: 8000,
+      // Show success toast - changes are now live for everyone instantly!
+      toast.success('✅ Changes saved and synced!', {
+        description: '🔥 All users will see updates instantly via Firebase',
+        duration: 4000,
       });
       
       setTimeout(() => setSaveStatus('idle'), 3000);

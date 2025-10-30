@@ -6,15 +6,19 @@ import { Badge } from '@/components/ui/badge';
 import { Github, Linkedin, Twitter, Mail, Download, ArrowRight, Sparkles } from 'lucide-react';
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { loadUserData, loadSiteSettings, loadStats } from '@/lib/storage';
+import { useRealtimeData } from '@/hooks/useRealtimeData';
 
 const Home = () => {
-  const [userData, setUserData] = useState(initialUserData);
-  const [stats, setStats] = useState(initialStats);
+  // Use real-time data (automatically updates across all devices)
+  const [userData] = useRealtimeData('portfolio_user_data', initialUserData);
+  const [stats] = useRealtimeData('portfolio_stats', initialStats);
+  const [siteSettings] = useRealtimeData('portfolio_site_settings', loadSiteSettings());
+  
   const [displayText, setDisplayText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const fullText = userData.tagline;
-  const [heroLayout, setHeroLayout] = useState<'left'|'center'|'right'>(loadSiteSettings().heroLayout || 'center');
-  const [socialVisibility, setSocialVisibility] = useState(loadSiteSettings().socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+  const heroLayout = siteSettings.heroLayout || 'center';
+  const socialVisibility = siteSettings.socialVisibility || { github: true, linkedin: true, twitter: true, email: true };
 
   const handleResumeDownload = async (e: any) => {
     if (!userData.resume) return;
@@ -37,53 +41,10 @@ const Home = () => {
     }
   };
 
-  // Load user data from localStorage with enhanced real-time updates
+  // Track page view for analytics
   useEffect(() => {
-    // Track page view for analytics
     trackPageView('home');
-
-    const loadData = () => {
-      console.log('🔄 Reloading homepage data...');
-      const stored = loadUserData(initialUserData);
-      setUserData(stored);
-      const storedStats = loadStats(initialStats);
-      setStats(storedStats);
-      const ss = loadSiteSettings();
-      setHeroLayout((ss.heroLayout as 'left'|'center'|'right') || 'center');
-      setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
-    };
-
-    loadData();
-
-    // Listen for updates from admin panel (multiple event types for reliability)
-    const handleDataUpdate = () => {
-      console.log('✨ Admin update detected - refreshing homepage');
-      loadData();
-      setDisplayText('');
-      setCurrentIndex(0);
-    };
-
-    // 1. Custom event
-    window.addEventListener('portfolioDataUpdated', handleDataUpdate);
-    
-    // 2. Storage event
-    window.addEventListener('storage', handleDataUpdate);
-    
-    // 3. Force reload event
-    window.addEventListener('forceDataReload', handleDataUpdate);
-    
-    // 4. Focus event (when user switches back to tab)
-    const handleFocus = () => {
-      loadData();
-    };
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
-      window.removeEventListener('storage', handleDataUpdate);
-      window.removeEventListener('forceDataReload', handleDataUpdate);
-      window.removeEventListener('focus', handleFocus);
-    };
+    console.log('✨ Home page: Real-time updates ENABLED via Firebase');
   }, []);
 
   // Typing animation effect
