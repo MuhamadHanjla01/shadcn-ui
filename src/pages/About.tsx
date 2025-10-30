@@ -40,6 +40,7 @@ const About = () => {
 
     // Load data
     const loadData = () => {
+      console.log('🔄 Reloading About page data...');
       setUserData(loadUserData(initialUserData));
       setSkills(loadSkills(initialSkills));
       setExperiences(loadExperiences(initialExperiences));
@@ -48,10 +49,24 @@ const About = () => {
 
     loadData();
 
-    // Listen for updates
-    const handleDataUpdate = () => loadData();
+    // Enhanced real-time update listeners
+    const handleDataUpdate = () => {
+      console.log('✨ Admin update detected - refreshing About page');
+      loadData();
+    };
+    
+    // Multiple event listeners for reliability
     window.addEventListener('portfolioDataUpdated', handleDataUpdate);
-    return () => window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
+    window.addEventListener('storage', handleDataUpdate);
+    window.addEventListener('forceDataReload', handleDataUpdate);
+    window.addEventListener('focus', handleDataUpdate);
+    
+    return () => {
+      window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
+      window.removeEventListener('storage', handleDataUpdate);
+      window.removeEventListener('forceDataReload', handleDataUpdate);
+      window.removeEventListener('focus', handleDataUpdate);
+    };
   }, []);
 
   const workExperience = experiences.filter(exp => exp.type === 'work');

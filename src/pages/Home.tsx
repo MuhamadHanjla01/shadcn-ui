@@ -37,12 +37,13 @@ const Home = () => {
     }
   };
 
-  // Load user data from localStorage
+  // Load user data from localStorage with enhanced real-time updates
   useEffect(() => {
     // Track page view for analytics
     trackPageView('home');
 
     const loadData = () => {
+      console.log('🔄 Reloading homepage data...');
       const stored = loadUserData(initialUserData);
       setUserData(stored);
       const storedStats = loadStats(initialStats);
@@ -54,15 +55,35 @@ const Home = () => {
 
     loadData();
 
-    // Listen for updates from admin panel
+    // Listen for updates from admin panel (multiple event types for reliability)
     const handleDataUpdate = () => {
+      console.log('✨ Admin update detected - refreshing homepage');
       loadData();
       setDisplayText('');
       setCurrentIndex(0);
     };
 
+    // 1. Custom event
     window.addEventListener('portfolioDataUpdated', handleDataUpdate);
-    return () => window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
+    
+    // 2. Storage event
+    window.addEventListener('storage', handleDataUpdate);
+    
+    // 3. Force reload event
+    window.addEventListener('forceDataReload', handleDataUpdate);
+    
+    // 4. Focus event (when user switches back to tab)
+    const handleFocus = () => {
+      loadData();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
+      window.removeEventListener('storage', handleDataUpdate);
+      window.removeEventListener('forceDataReload', handleDataUpdate);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   // Typing animation effect

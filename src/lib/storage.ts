@@ -56,8 +56,22 @@ const STORAGE_KEYS = {
 export const saveToStorage = <T>(key: string, data: T): void => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
-    // Dispatch event for real-time updates
+    
+    // Multiple dispatch methods for maximum reliability
+    // 1. Custom event
     window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { detail: { key, data } }));
+    
+    // 2. Storage event (for same-tab updates - simulated)
+    window.dispatchEvent(new StorageEvent('storage', {
+      key,
+      newValue: JSON.stringify(data),
+      url: window.location.href
+    }));
+    
+    // 3. Force page reload event
+    window.dispatchEvent(new CustomEvent('forceDataReload', { detail: { key } }));
+    
+    console.log(`💾 Saved ${key} - Broadcasting updates...`);
   } catch (error) {
     console.error('Error saving to storage:', error);
   }

@@ -16,11 +16,29 @@ const Blog = () => {
 
   useEffect(() => {
     trackPageView('blog');
-    const load = () => setPosts(loadBlogPosts(initialBlogPosts));
+    const load = () => {
+      console.log('🔄 Reloading Blog posts...');
+      setPosts(loadBlogPosts(initialBlogPosts));
+    };
     load();
-    const onUpdate = () => load();
+    
+    const onUpdate = () => {
+      console.log('✨ Blog update detected');
+      load();
+    };
+    
+    // Multiple event listeners for reliability
     window.addEventListener('portfolioDataUpdated', onUpdate);
-    return () => window.removeEventListener('portfolioDataUpdated', onUpdate);
+    window.addEventListener('storage', onUpdate);
+    window.addEventListener('forceDataReload', onUpdate);
+    window.addEventListener('focus', onUpdate);
+    
+    return () => {
+      window.removeEventListener('portfolioDataUpdated', onUpdate);
+      window.removeEventListener('storage', onUpdate);
+      window.removeEventListener('forceDataReload', onUpdate);
+      window.removeEventListener('focus', onUpdate);
+    };
   }, []);
 
   const allTags = ['All', ...Array.from(new Set(posts.flatMap(post => post.tags)))];
