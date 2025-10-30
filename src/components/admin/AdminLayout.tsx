@@ -1,0 +1,239 @@
+import { useState, useEffect } from 'react';
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { 
+  LayoutDashboard, 
+  Settings, 
+  Users, 
+  FileText, 
+  MessageSquare, 
+  Image, 
+  BarChart3, 
+  Palette, 
+  Home,
+  Menu,
+  LogOut,
+  Search,
+  User,
+  Shield
+} from 'lucide-react';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { Input } from '@/components/ui/input';
+import NotificationDropdown from './NotificationDropdown';
+import { notificationService } from '@/lib/notification-service';
+
+const AdminLayout = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { auth, logout } = useAdminAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Initialize notification listener
+  useEffect(() => {
+    notificationService.initNotificationListener();
+    notificationService.generateSystemNotifications();
+  }, []);
+
+  const navigation = [
+    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { name: 'Home Editor', href: '/admin/home', icon: Home },
+    { name: 'About Editor', href: '/admin/about', icon: Users },
+    { name: 'Projects', href: '/admin/projects', icon: FileText },
+    { name: 'Blog Posts', href: '/admin/blog', icon: FileText },
+    { name: 'Messages', href: '/admin/messages', icon: MessageSquare },
+    { name: 'Media Library', href: '/admin/media', icon: Image },
+    { name: 'Theme Settings', href: '/admin/theme', icon: Palette },
+    { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+    { name: 'Settings', href: '/admin/settings', icon: Settings },
+  ];
+
+  const isActive = (path: string) => {
+    if (path === '/admin') {
+      return location.pathname === '/admin';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+        <Link to="/admin" className="flex items-center space-x-2">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center">
+            <span className="text-white font-bold text-sm">AC</span>
+          </div>
+          <div>
+            <h2 className="font-bold text-lg text-slate-900 dark:text-white">Admin Panel</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Portfolio CMS</p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-2">
+        {navigation.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.name}
+              to={item.href}
+              onClick={() => setIsSidebarOpen(false)}
+              className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isActive(item.href)
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800'
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              <span>{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* User Info */}
+      <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex items-center space-x-3 p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={auth.user?.avatar} />
+            <AvatarFallback>{auth.user?.name?.charAt(0)}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+              {auth.user?.name}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+              {auth.user?.email}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
+        <div className="flex flex-col flex-grow bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
+          <SidebarContent />
+        </div>
+      </div>
+
+      {/* Mobile Sidebar */}
+      <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+        <SheetContent side="left" className="w-72 p-0">
+          <div className="bg-white dark:bg-slate-800 h-full">
+            <SidebarContent />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Main Content */}
+      <div className="lg:pl-72">
+        {/* Top Header */}
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="flex h-16 items-center justify-between">
+              {/* Mobile menu button */}
+              <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="lg:hidden">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+              </Sheet>
+
+              {/* Search */}
+              <div className="flex-1 max-w-lg mx-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search..."
+                    className="pl-10 bg-slate-100 dark:bg-slate-700 border-0"
+                  />
+                </div>
+              </div>
+
+              {/* Header Actions */}
+              <div className="flex items-center space-x-4">
+                <NotificationDropdown />
+
+                <Link to="/" target="_blank">
+                  <Button variant="outline" size="sm">
+                    View Site
+                  </Button>
+                </Link>
+
+                {/* Profile Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={auth.user?.avatar} />
+                        <AvatarFallback>{auth.user?.name?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{auth.user?.name}</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {auth.user?.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/admin/profile')}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>System Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <div className="flex items-center w-full">
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span className="flex-1">Role</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {auth.user?.role}
+                        </Badge>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign Out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default AdminLayout;
