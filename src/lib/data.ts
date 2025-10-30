@@ -86,7 +86,7 @@ const defaultProjects: Project[] = [
     description: "Full-stack e-commerce solution with real-time inventory management, payment processing, and admin dashboard.",
     image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&h=400&fit=crop",
     techStack: ["React", "Node.js", "PostgreSQL", "Stripe", "AWS"],
-    githubUrl: "https://github.com/alexchen/ecommerce",
+    githubUrl: "https://github.com/MuhamadHanjla01/ecommerce",
     liveUrl: "https://ecommerce-demo.com",
     featured: true,
     category: "Web Application"
@@ -97,7 +97,7 @@ const defaultProjects: Project[] = [
     description: "Collaborative task management tool with real-time updates, team collaboration, and advanced filtering.",
     image: "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=600&h=400&fit=crop",
     techStack: ["React", "TypeScript", "Firebase", "Material-UI"],
-    githubUrl: "https://github.com/alexchen/taskmanager",
+    githubUrl: "https://github.com/MuhamadHanjla01/taskmanager",
     liveUrl: "https://taskmanager-demo.com",
     featured: true,
     category: "Productivity"
@@ -108,7 +108,7 @@ const defaultProjects: Project[] = [
     description: "Beautiful weather dashboard with location-based forecasts, interactive maps, and weather alerts.",
     image: "https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?w=600&h=400&fit=crop",
     techStack: ["Vue.js", "OpenWeather API", "Chart.js", "Tailwind"],
-    githubUrl: "https://github.com/alexchen/weather",
+    githubUrl: "https://github.com/MuhamadHanjla01/weather",
     liveUrl: "https://weather-demo.com",
     featured: false,
     category: "Data Visualization"
@@ -119,7 +119,7 @@ const defaultProjects: Project[] = [
     description: "Intelligent chatbot with natural language processing, context awareness, and multi-language support.",
     image: "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=600&h=400&fit=crop",
     techStack: ["Python", "OpenAI API", "FastAPI", "React", "WebSocket"],
-    githubUrl: "https://github.com/alexchen/chatbot",
+    githubUrl: "https://github.com/MuhamadHanjla01/chatbot",
     featured: false,
     category: "AI/ML"
   }

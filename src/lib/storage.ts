@@ -243,7 +243,7 @@ export const saveSiteSettings = (data: SiteSettings) => {
 
 export const loadSiteSettings = (): SiteSettings => {
   return loadFromStorage(STORAGE_KEYS.SITE_SETTINGS, {
-    siteName: 'Portfolio',
+    siteName: 'Muhamad Hanjla',
     siteDescription: 'Personal portfolio website',
     seoKeywords: ['portfolio', 'developer', 'web development'],
     googleAnalyticsId: '',

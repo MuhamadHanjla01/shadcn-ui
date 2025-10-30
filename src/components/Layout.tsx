@@ -67,7 +67,7 @@ const Layout = ({ children }: LayoutProps) => {
                 </div>
               )}
               <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                {siteSettings.siteName || 'Alex Chen'}
+                {siteSettings.siteName || 'Muhamad Hanjla'}
               </span>
             </Link>
 
