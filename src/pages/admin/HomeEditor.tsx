@@ -22,6 +22,7 @@ import {
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { saveUserData, loadUserData, loadSiteSettings, saveSiteSettings, saveStats, loadStats } from '@/lib/storage';
 import type { Stat } from '@/types';
+import { toast } from 'sonner';
 
 const HomeEditor = () => {
   const [homeData, setHomeData] = useState({
@@ -176,6 +177,13 @@ const HomeEditor = () => {
       window.dispatchEvent(new CustomEvent('portfolioDataUpdated'));
       
       setSaveStatus('success');
+      
+      // Show success toast with reminder
+      toast.success('Changes saved to admin preview!', {
+        description: '⚠️ To make changes visible to others: Go to Settings → Export Data → Replace JSON file → Git push',
+        duration: 8000,
+      });
+      
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Error saving data:', error);

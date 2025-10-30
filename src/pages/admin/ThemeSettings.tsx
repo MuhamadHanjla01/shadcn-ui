@@ -12,6 +12,7 @@ import {
   Sun
 } from 'lucide-react';
 import { loadThemeSettings, saveThemeSettings, ThemeSettings, loadSiteSettings, saveSiteSettings, SiteSettings } from '@/lib/storage';
+import { toast } from 'sonner';
 
 const ThemeSettingsPage = () => {
   const [settings, setSettings] = useState<ThemeSettings>(loadThemeSettings());
@@ -35,6 +36,12 @@ const ThemeSettingsPage = () => {
       console.log('🎨 Theme settings saved and broadcasted');
       
       setSaveStatus('success');
+      
+      // Deployment reminder
+      toast.success('Theme settings saved!', {
+        description: '⚠️ To deploy: Settings → Export Data → Replace JSON → Git push',
+        duration: 8000,
+      });
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Error saving theme settings:', error);

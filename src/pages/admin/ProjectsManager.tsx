@@ -20,6 +20,7 @@ import { projects as initialProjects } from '@/lib/data';
 import { saveProjects } from '@/lib/storage';
 import { Project } from '@/types';
 import { notificationService } from '@/lib/notification-service';
+import { toast } from 'sonner';
 
 const ProjectsManager = () => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
@@ -46,6 +47,12 @@ const ProjectsManager = () => {
         `Successfully updated ${projects.length} project${projects.length !== 1 ? 's' : ''}`,
         '/admin/projects'
       );
+      
+      // Deployment reminder
+      toast.success('Projects saved!', {
+        description: '⚠️ To deploy: Settings → Export Data → Replace JSON → Git push',
+        duration: 8000,
+      });
       
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
