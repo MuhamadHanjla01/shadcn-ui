@@ -42,11 +42,11 @@ git commit -m "Initial commit - Modern portfolio with maintenance mode"
 5. Click **Create repository**
 
 ### 7. Connect and Push
-GitHub will show you commands. Copy them, or use these (replace with your details):
+GitHub will show you commands. Use these with your details:
 
 ```powershell
 # Add your GitHub repository
-git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPO-NAME.git
+git remote add origin https://github.com/MuhamadHanjla01/shadcn-ui.git
 
 # Rename branch to main
 git branch -M main
@@ -55,9 +55,9 @@ git branch -M main
 git push -u origin main
 ```
 
-**Example:**
+Or if remote already exists, update it:
 ```powershell
-git remote add origin https://github.com/johndoe/portfolio-website.git
+git remote set-url origin https://github.com/MuhamadHanjla01/shadcn-ui.git
 git branch -M main
 git push -u origin main
 ```
@@ -66,7 +66,7 @@ git push -u origin main
 
 ## ✅ Done! Your Code is on GitHub
 
-Visit: `https://github.com/YOUR-USERNAME/YOUR-REPO-NAME`
+Visit: `https://github.com/MuhamadHanjla01/shadcn-ui`
 
 ---
 
@@ -83,31 +83,23 @@ Visit: `https://github.com/YOUR-USERNAME/YOUR-REPO-NAME`
 6. You should see a deployment running
 7. Once complete, your site will be live at:
    ```
-   https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/
+   https://MuhamadHanjla01.github.io/shadcn-ui/
    ```
 
-### Update Base Path (Important for GitHub Pages)
+### Base Path Already Configured! ✅
 
-If deploying to `username.github.io/repo-name/`, update the GitHub Actions workflow:
-
-Edit `.github/workflows/deploy.yml` and add this to the Build step:
+The GitHub Actions workflow is already configured with:
 
 ```yaml
 - name: Build
   run: pnpm build
   env:
-    VITE_BASE_PATH: /YOUR-REPO-NAME/
+    VITE_BASE_PATH: /shadcn-ui/
 ```
 
-Replace `YOUR-REPO-NAME` with your actual repository name.
+Your site will deploy to: `https://MuhamadHanjla01.github.io/shadcn-ui/`
 
-**OR** if using a custom domain or username.github.io (without repo name):
-```yaml
-- name: Build
-  run: pnpm build
-  env:
-    VITE_BASE_PATH: /
-```
+No changes needed!
 
 ---
 

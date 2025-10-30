@@ -50,10 +50,10 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          # IMPORTANT: Update this to match your repository name
-          # For username.github.io/repo-name deployment, use: /repo-name/
-          # For custom domain or username.github.io (root), use: /
-          VITE_BASE_PATH: /
+          # Base path configured for GitHub Pages deployment
+          # Repository: shadcn-ui
+          # Will be deployed at: https://username.github.io/shadcn-ui/
+          VITE_BASE_PATH: /shadcn-ui/
         
       - name: Setup Pages
         uses: actions/configure-pages@v4

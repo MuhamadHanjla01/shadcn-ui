@@ -1,5 +1,6 @@
 {
-  "name": "shadcnui",
+  "name": "shadcn-ui",
+  "homepage": "https://MuhamadHanjla01.github.io/shadcn-ui",
   "type": "module",
   "packageManager": "pnpm@8.10.0",
   "scripts": {

@@ -40,7 +40,13 @@ git commit -m "Initial commit: Modern portfolio with maintenance mode"
 
 ### 3️⃣ Push to GitHub
 ```bash
-git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPO.git
+# If remote doesn't exist:
+git remote add origin https://github.com/MuhamadHanjla01/shadcn-ui.git
+
+# OR if remote already exists:
+git remote set-url origin https://github.com/MuhamadHanjla01/shadcn-ui.git
+
+# Then push:
 git branch -M main
 git push -u origin main
 ```
@@ -55,21 +61,19 @@ git push -u origin main
 1. Repository → **Settings** → **Pages**
 2. Source: Select **"GitHub Actions"**
 
-### Update Base Path:
-Edit `.github/workflows/deploy.yml` line 56:
+### Base Path Already Configured! ✅
+The workflow is already set with:
 ```yaml
-VITE_BASE_PATH: /your-repo-name/
+VITE_BASE_PATH: /shadcn-ui/
 ```
 
-### Push Changes:
+### Just Push and Deploy:
 ```bash
-git add .
-git commit -m "Configure GitHub Pages base path"
 git push
 ```
 
 **Live in 2 minutes at:**
-`https://YOUR-USERNAME.github.io/your-repo-name/`
+`https://MuhamadHanjla01.github.io/shadcn-ui/`
 
 ---
 
@@ -138,7 +142,8 @@ Your `.gitignore` file ensures these **won't be uploaded**:
 
 4. **Add README Badge**:
    ```markdown
-   ![Deploy](https://github.com/USERNAME/REPO/actions/workflows/deploy.yml/badge.svg)
+   ![Deploy](https://github.com/MuhamadHanjla01/shadcn-ui/actions/workflows/deploy.yml/badge.svg)
+   [![Live Demo](https://img.shields.io/badge/demo-live-green.svg)](https://MuhamadHanjla01.github.io/shadcn-ui/)
    ```
 
 5. **Share Your Work**:

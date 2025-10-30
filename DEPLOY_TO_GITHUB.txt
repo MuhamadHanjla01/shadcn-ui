@@ -32,16 +32,15 @@ STEP 5: CREATE GITHUB REPOSITORY
 5. Click "Create repository"
 
 
-STEP 6: CONNECT TO GITHUB (Replace YOUR-USERNAME and YOUR-REPO-NAME)
+STEP 6: CONNECT TO GITHUB
 ────────────────────────────────────────────────────────────────────
-git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPO-NAME.git
+# If remote doesn't exist yet:
+git remote add origin https://github.com/MuhamadHanjla01/shadcn-ui.git
 git branch -M main
 git push -u origin main
 
-
-EXAMPLE (if your username is "johndoe" and repo is "my-portfolio"):
-────────────────────────────────────────────────────────────────────
-git remote add origin https://github.com/johndoe/my-portfolio.git
+# OR if remote already exists:
+git remote set-url origin https://github.com/MuhamadHanjla01/shadcn-ui.git
 git branch -M main
 git push -u origin main
 
@@ -59,28 +58,26 @@ STEP 7: ENABLE GITHUB PAGES
    - Source: Select "GitHub Actions"
 5. Click "Actions" tab to see deployment progress
 6. Your site will be live at:
-   https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/
+   https://MuhamadHanjla01.github.io/shadcn-ui/
 
 
-STEP 8: UPDATE WORKFLOW FOR CORRECT BASE PATH
+STEP 8: BASE PATH ALREADY CONFIGURED ✅
 ────────────────────────────────────────────────────────────────────
-Edit file: .github/workflows/deploy.yml
-
-Find the "Build" step and modify it to:
+The workflow is already set up with:
 
       - name: Build
         run: pnpm build
         env:
-          VITE_BASE_PATH: /YOUR-REPO-NAME/
+          VITE_BASE_PATH: /shadcn-ui/
 
-Replace YOUR-REPO-NAME with your actual repository name!
+No changes needed! Just push your code.
 
 
-STEP 9: PUSH THE UPDATED WORKFLOW
+STEP 9: VERIFY DEPLOYMENT
 ────────────────────────────────────────────────────────────────────
-git add .
-git commit -m "Update base path for GitHub Pages"
-git push
+1. Visit: https://github.com/MuhamadHanjla01/shadcn-ui
+2. Check Actions tab for deployment status
+3. Once complete, visit: https://MuhamadHanjla01.github.io/shadcn-ui/
 
 
 ═══════════════════════════════════════════════════════════════════
