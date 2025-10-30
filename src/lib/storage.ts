@@ -1,7 +1,8 @@
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
 
-// Storage version - increment this to force clear old data
-const STORAGE_VERSION = '2.1.0'; // Updated for mobile cache fix
+// Storage version - increment this when structure changes
+// User data (images, content) is now preserved during version updates
+const STORAGE_VERSION = '2.2.0'; // Fixed: Profile images now persist
 const VERSION_KEY = 'portfolio_storage_version';
 
 // Check and clear old storage if version mismatch
@@ -9,11 +10,24 @@ const checkStorageVersion = () => {
   try {
     const currentVersion = localStorage.getItem(VERSION_KEY);
     if (currentVersion !== STORAGE_VERSION) {
+      // Save user-uploaded content before clearing
+      const userDataBackup = localStorage.getItem('portfolio_user_data');
+      const projectsBackup = localStorage.getItem('portfolio_projects');
+      const blogPostsBackup = localStorage.getItem('portfolio_blog_posts');
+      const siteSettingsBackup = localStorage.getItem('portfolio_site_settings');
+      
       // Clear all portfolio data (keep only version)
       const keysToRemove = Object.keys(localStorage).filter(key => key.startsWith('portfolio_'));
       keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Restore user-uploaded content (profile images, custom data)
+      if (userDataBackup) localStorage.setItem('portfolio_user_data', userDataBackup);
+      if (projectsBackup) localStorage.setItem('portfolio_projects', projectsBackup);
+      if (blogPostsBackup) localStorage.setItem('portfolio_blog_posts', blogPostsBackup);
+      if (siteSettingsBackup) localStorage.setItem('portfolio_site_settings', siteSettingsBackup);
+      
       localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
-      console.log('Storage cleared due to version update:', currentVersion, '→', STORAGE_VERSION);
+      console.log('Storage migrated to version:', currentVersion, '→', STORAGE_VERSION);
     }
   } catch (error) {
     console.error('Error checking storage version:', error);
