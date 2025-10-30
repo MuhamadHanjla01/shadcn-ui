@@ -30,7 +30,6 @@ jobs:
         uses: pnpm/action-setup@v3
         with:
           version: 8
-          run_install: false
           
       - name: Get pnpm store directory
         id: pnpm-cache
@@ -47,14 +46,14 @@ jobs:
             ${{ runner.os }}-pnpm-store-
           
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
         
       - name: Build
         run: pnpm build
         env:
           # Base path configured for GitHub Pages deployment
-          # Repository: shadcn-ui
-          # Will be deployed at: https://username.github.io/shadcn-ui/
+          # Repository: MuhamadHanjla01/shadcn-ui
+          # Will be deployed at: https://MuhamadHanjla01.github.io/shadcn-ui/
           VITE_BASE_PATH: /shadcn-ui/
         
       - name: Setup Pages
