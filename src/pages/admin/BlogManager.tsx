@@ -46,10 +46,10 @@ const BlogManager = () => {
         '/admin/blog'
       );
       
-      // Instant sync notification
+      // Save notification
       toast.success('✅ Blog posts saved!', {
-        description: '🔥 Synced to all devices instantly',
-        duration: 4000,
+        description: '💡 Export data in Settings and git push to deploy',
+        duration: 5000,
       });
       
       setTimeout(() => setSaveStatus('idle'), 3000);

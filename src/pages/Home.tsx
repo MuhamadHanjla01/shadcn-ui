@@ -6,19 +6,18 @@ import { Badge } from '@/components/ui/badge';
 import { Github, Linkedin, Twitter, Mail, Download, ArrowRight, Sparkles } from 'lucide-react';
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { loadUserData, loadSiteSettings, loadStats } from '@/lib/storage';
-import { useRealtimeData } from '@/hooks/useRealtimeData';
 
 const Home = () => {
-  // Use real-time data (automatically updates across all devices)
-  const [userData] = useRealtimeData('portfolio_user_data', initialUserData);
-  const [stats] = useRealtimeData('portfolio_stats', initialStats);
-  const [siteSettings] = useRealtimeData('portfolio_site_settings', loadSiteSettings());
-  
   const [displayText, setDisplayText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Load data from localStorage/Firebase
+  const [userData, setUserData] = useState(initialUserData);
+  const [stats, setStats] = useState(initialStats);
+  const [heroLayout, setHeroLayout] = useState<'left'|'center'|'right'>('center');
+  const [socialVisibility, setSocialVisibility] = useState({ github: true, linkedin: true, twitter: true, email: true });
+  
   const fullText = userData.tagline;
-  const heroLayout = siteSettings.heroLayout || 'center';
-  const socialVisibility = siteSettings.socialVisibility || { github: true, linkedin: true, twitter: true, email: true };
 
   const handleResumeDownload = async (e: any) => {
     if (!userData.resume) return;
@@ -41,10 +40,31 @@ const Home = () => {
     }
   };
 
-  // Track page view for analytics
+  // Load user data with real-time updates
   useEffect(() => {
     trackPageView('home');
-    console.log('✨ Home page: Real-time updates ENABLED via Firebase');
+    
+    const loadData = () => {
+      const stored = loadUserData(initialUserData);
+      setUserData(stored);
+      const storedStats = loadStats(initialStats);
+      setStats(storedStats);
+      const ss = loadSiteSettings();
+      setHeroLayout(ss.heroLayout || 'center');
+      setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+    };
+    
+    loadData();
+    
+    // Listen for updates
+    const handleUpdate = () => loadData();
+    window.addEventListener('portfolioDataUpdated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    
+    return () => {
+      window.removeEventListener('portfolioDataUpdated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
   }, []);
 
   // Typing animation effect

@@ -51,10 +51,10 @@ const AboutEditor = () => {
       
       setSaveStatus('success');
       
-      // Show success toast - instant sync
+      // Show success toast
       toast.success('✅ About section saved!', {
-        description: '🔥 Changes synced to all devices instantly',
-        duration: 4000,
+        description: '💡 Export data in Settings and git push to deploy',
+        duration: 5000,
       });
       
       setTimeout(() => setSaveStatus('idle'), 3000);

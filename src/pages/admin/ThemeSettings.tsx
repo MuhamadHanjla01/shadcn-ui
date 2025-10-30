@@ -37,10 +37,10 @@ const ThemeSettingsPage = () => {
       
       setSaveStatus('success');
       
-      // Instant sync notification
+      // Save notification
       toast.success('✅ Theme settings saved!', {
-        description: '🔥 Synced to all devices instantly',
-        duration: 4000,
+        description: '💡 Export data in Settings and git push to deploy',
+        duration: 5000,
       });
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
