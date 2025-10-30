@@ -5,6 +5,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" type="image/png">
+  
+  <!-- Cache Control - Force fresh content -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  
   <title>Loading...</title>
   
   <!-- Immediately load settings from localStorage to prevent flash of old content -->
@@ -112,6 +118,27 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Alex Chen - Full Stack Developer Portfolio" />
   <meta name="twitter:description" content="Full Stack Developer specializing in React, Node.js, and modern web technologies." />
+
+  <!-- Clear old service workers and caches -->
+  <script>
+    // Clear any old service workers
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    
+    // Clear old caches
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (let name of names) {
+          caches.delete(name);
+        }
+      });
+    }
+  </script>
 
   <!-- Single Page Apps for GitHub Pages -->
   <!-- This script checks for a redirect and restores the original URL -->

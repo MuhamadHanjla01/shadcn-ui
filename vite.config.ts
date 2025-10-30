@@ -25,8 +25,14 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    // Add hash to filenames for cache busting
+    assetsInlineLimit: 0,
     rollupOptions: {
       output: {
+        // Add hash to chunk filenames
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
         },
