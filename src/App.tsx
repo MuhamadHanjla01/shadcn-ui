@@ -117,7 +117,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <AdminAuthProvider>
           <Routes>
             {/* Public Portfolio Routes with Maintenance Mode Check */}
