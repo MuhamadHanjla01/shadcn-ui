@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ExternalLink, Github, Star, Filter } from 'lucide-react';
 import { projects as initialProjects } from '@/lib/data';
 import { loadProjects } from '@/lib/storage';
+import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 
 const Projects = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -15,7 +16,14 @@ const Projects = () => {
 
   useEffect(() => {
     trackPageView('projects');
-    const load = () => setProjectList(loadProjects(initialProjects));
+    const load = async () => {
+      const projects = await loadDataFromFile(
+        DATA_FILES.projects,
+        'portfolio_projects',
+        initialProjects
+      );
+      setProjectList(projects);
+    };
     load();
     const onUpdate = () => load();
     window.addEventListener('portfolioDataUpdated', onUpdate);

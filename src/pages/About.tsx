@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Award, GraduationCap, Briefcase } from 'lucide-react';
 import { userData as initialUserData, skills as initialSkills, experiences as initialExperiences, achievements as initialAchievements } from '@/lib/data';
 import { loadUserData, loadSkills, loadExperiences, loadAchievements, trackPageView } from '@/lib/storage';
+import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 
 const About = () => {
   const [userData, setUserData] = useState(initialUserData);
@@ -38,12 +39,33 @@ const About = () => {
     // Track page view
     trackPageView('about');
 
-    // Load data
-    const loadData = () => {
-      setUserData(loadUserData(initialUserData));
-      setSkills(loadSkills(initialSkills));
-      setExperiences(loadExperiences(initialExperiences));
-      setAchievements(loadAchievements(initialAchievements));
+    // Load data from shared JSON files (or localStorage fallback)
+    const loadData = async () => {
+      const userData = await loadDataFromFile(
+        DATA_FILES.user,
+        'portfolio_user_data',
+        initialUserData
+      );
+      const skills = await loadDataFromFile(
+        DATA_FILES.skills,
+        'portfolio_skills',
+        initialSkills
+      );
+      const experiences = await loadDataFromFile(
+        DATA_FILES.experiences,
+        'portfolio_experiences',
+        initialExperiences
+      );
+      const achievements = await loadDataFromFile(
+        DATA_FILES.achievements,
+        'portfolio_achievements',
+        initialAchievements
+      );
+      
+      setUserData(userData);
+      setSkills(skills);
+      setExperiences(experiences);
+      setAchievements(achievements);
     };
 
     loadData();

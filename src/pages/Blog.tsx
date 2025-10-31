@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar, Clock, Search, Tag } from 'lucide-react';
 import { blogPosts as initialBlogPosts } from '@/lib/data';
 import { loadBlogPosts } from '@/lib/storage';
+import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 
 const Blog = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -16,7 +17,14 @@ const Blog = () => {
 
   useEffect(() => {
     trackPageView('blog');
-    const load = () => setPosts(loadBlogPosts(initialBlogPosts));
+    const load = async () => {
+      const blogPosts = await loadDataFromFile(
+        DATA_FILES.blogPosts,
+        'portfolio_blog_posts',
+        initialBlogPosts
+      );
+      setPosts(blogPosts);
+    };
     load();
     const onUpdate = () => load();
     window.addEventListener('portfolioDataUpdated', onUpdate);

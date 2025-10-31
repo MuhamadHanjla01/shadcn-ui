@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Github, Linkedin, Twitter, Mail, Download, ArrowRight, Sparkles } from 'lucide-react';
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { loadUserData, loadSiteSettings, loadStats } from '@/lib/storage';
+import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 
 const Home = () => {
   const [userData, setUserData] = useState(initialUserData);
@@ -37,17 +38,34 @@ const Home = () => {
     }
   };
 
-  // Load user data from localStorage
+  // Load user data from shared JSON files (or localStorage fallback)
   useEffect(() => {
     // Track page view for analytics
     trackPageView('home');
 
-    const loadData = () => {
-      const stored = loadUserData(initialUserData);
-      setUserData(stored);
-      const storedStats = loadStats(initialStats);
-      setStats(storedStats);
-      const ss = loadSiteSettings();
+    const loadData = async () => {
+      // Try to load from shared JSON files first, fall back to localStorage
+      const userData = await loadDataFromFile(
+        DATA_FILES.user,
+        'portfolio_user_data',
+        initialUserData
+      );
+      const stats = await loadDataFromFile(
+        DATA_FILES.stats,
+        'portfolio_stats',
+        initialStats
+      );
+      
+      setUserData(userData);
+      setStats(stats);
+      
+      // Load site settings (also try JSON first)
+      const ss = await loadDataFromFile(
+        DATA_FILES.siteSettings,
+        'portfolio_site_settings',
+        loadSiteSettings()
+      );
+      
       setHeroLayout((ss.heroLayout as 'left'|'center'|'right') || 'center');
       setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
     };

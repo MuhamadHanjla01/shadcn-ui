@@ -13,7 +13,9 @@
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
 import { SiteSettings } from './storage';
 
-const DATA_BASE_PATH = '/data';
+// Use base path from vite config (for GitHub Pages subdirectory)
+const BASE_PATH = import.meta.env.BASE_URL || '/shadcn-ui/';
+const DATA_BASE_PATH = `${BASE_PATH.replace(/\/$/, '')}/data`;
 const CACHE_BUST_VERSION = 'v1';
 
 // Data file paths with cache busting
