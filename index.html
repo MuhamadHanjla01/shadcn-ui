@@ -7,53 +7,17 @@
   <link rel="icon" href="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" type="image/png">
   <title>Muhamad Hanjla</title>
   
-  <!-- Immediately load settings and user data from localStorage to update OG tags for social media scrapers -->
+  <!-- Immediately load settings and user data to update OG tags for social media scrapers -->
   <script>
     (function() {
       try {
-        // Load site settings
-        const settings = localStorage.getItem('portfolio_site_settings');
-        const parsedSettings = settings ? JSON.parse(settings) : {};
-        
-        // Load user data
-        const userData = localStorage.getItem('portfolio_user_data');
-        const parsedUser = userData ? JSON.parse(userData) : null;
-        
-        // Build dynamic meta data
-        let ogTitle, ogDescription, ogImage;
-        
-        if (parsedSettings.metaTitle) {
-          ogTitle = parsedSettings.metaTitle;
-          document.title = parsedSettings.metaTitle;
-        } else if (parsedUser) {
-          ogTitle = parsedUser.name + ' - ' + parsedUser.title;
-          document.title = ogTitle;
-        }
-        
-        if (parsedSettings.metaDescription) {
-          ogDescription = parsedSettings.metaDescription;
-        } else if (parsedUser) {
-          ogDescription = parsedUser.tagline || parsedUser.name + ' - ' + parsedUser.title + ' Portfolio';
-        }
-        
-        if (parsedSettings.ogImage) {
-          ogImage = parsedSettings.ogImage;
-        } else if (parsedUser && parsedUser.profileImage) {
-          ogImage = parsedUser.profileImage;
-          // Convert relative URLs to absolute
-          if (!ogImage.startsWith('http') && !ogImage.startsWith('data:')) {
-            ogImage = window.location.origin + (ogImage.startsWith('/') ? ogImage : '/' + ogImage);
-          }
-        }
-        
-        // Update OG tags immediately (before React loads)
+        // Function to update meta tags
         function updateMetaTag(selector, content) {
           if (!content) return;
           let tag = document.querySelector(selector);
           if (tag) {
             tag.setAttribute('content', content);
           } else {
-            // Create if doesn't exist
             try {
               if (selector.includes('property=')) {
                 const match = selector.match(/property="([^"]+)"/);
@@ -80,29 +44,98 @@
           }
         }
         
-        if (ogTitle) {
-          updateMetaTag('meta[property="og:title"]', ogTitle);
-          updateMetaTag('meta[name="twitter:title"]', ogTitle);
+        // Try to fetch user data from JSON file first (for accurate social previews)
+        const basePath = '/shadcn-ui';
+        const userDataUrl = basePath + '/data/user.json?v=' + Date.now();
+        const siteSettingsUrl = basePath + '/data/site-settings.json?v=' + Date.now();
+        
+        // Use synchronous approach: try fetch, but don't block - update immediately with localStorage if fetch fails
+        // Load from localStorage first (immediate)
+        const settings = localStorage.getItem('portfolio_site_settings');
+        const parsedSettings = settings ? JSON.parse(settings) : {};
+        
+        const userData = localStorage.getItem('portfolio_user_data');
+        let parsedUser = userData ? JSON.parse(userData) : null;
+        
+        // Try to fetch fresh data from JSON files (async, but we'll update when it arrives)
+        Promise.all([
+          fetch(userDataUrl, { cache: 'no-store' }).catch(() => null),
+          fetch(siteSettingsUrl, { cache: 'no-store' }).catch(() => null)
+        ]).then(([userResponse, settingsResponse]) => {
+          if (userResponse && userResponse.ok) {
+            userResponse.json().then(data => {
+              parsedUser = data;
+              updateOGTags(parsedUser, parsedSettings);
+            }).catch(() => {});
+          }
+          if (settingsResponse && settingsResponse.ok) {
+            settingsResponse.json().then(data => {
+              Object.assign(parsedSettings, data);
+              updateOGTags(parsedUser, parsedSettings);
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+        
+        // Update OG tags function
+        function updateOGTags(parsedUser, parsedSettings) {
+        
+          // Build dynamic meta data
+          let ogTitle, ogDescription, ogImage;
+          
+          if (parsedSettings && parsedSettings.metaTitle) {
+            ogTitle = parsedSettings.metaTitle;
+            document.title = parsedSettings.metaTitle;
+          } else if (parsedUser && parsedUser.name && parsedUser.title) {
+            ogTitle = parsedUser.name + ' - ' + parsedUser.title;
+            document.title = ogTitle;
+          }
+          
+          if (parsedSettings && parsedSettings.metaDescription) {
+            ogDescription = parsedSettings.metaDescription;
+          } else if (parsedUser) {
+            ogDescription = (parsedUser.tagline || parsedUser.name + ' - ' + parsedUser.title + ' Portfolio');
+          }
+          
+          if (parsedSettings && parsedSettings.ogImage) {
+            ogImage = parsedSettings.ogImage;
+          } else if (parsedUser && parsedUser.profileImage) {
+            ogImage = parsedUser.profileImage;
+            // Convert relative URLs to absolute
+            if (!ogImage.startsWith('http') && !ogImage.startsWith('data:')) {
+              ogImage = window.location.origin + (ogImage.startsWith('/') ? ogImage : '/' + ogImage);
+            }
+          }
+          
+          // Update OG tags immediately
+          if (ogTitle) {
+            updateMetaTag('meta[property="og:title"]', ogTitle);
+            updateMetaTag('meta[name="twitter:title"]', ogTitle);
+          }
+          
+          if (ogDescription) {
+            updateMetaTag('meta[property="og:description"]', ogDescription);
+            updateMetaTag('meta[name="twitter:description"]', ogDescription);
+            updateMetaTag('meta[name="description"]', ogDescription);
+          }
+          
+          if (ogImage) {
+            updateMetaTag('meta[property="og:image"]', ogImage);
+            updateMetaTag('meta[name="twitter:image"]', ogImage);
+          }
+          
+          // Update OG URL
+          updateMetaTag('meta[property="og:url"]', window.location.href);
+          
+          // Update OG site name
+          if (parsedSettings && parsedSettings.siteName) {
+            updateMetaTag('meta[property="og:site_name"]', parsedSettings.siteName);
+          } else if (parsedUser && parsedUser.name) {
+            updateMetaTag('meta[property="og:site_name"]', parsedUser.name);
+          }
         }
         
-        if (ogDescription) {
-          updateMetaTag('meta[property="og:description"]', ogDescription);
-          updateMetaTag('meta[name="twitter:description"]', ogDescription);
-          updateMetaTag('meta[name="description"]', ogDescription);
-        }
-        
-        if (ogImage) {
-          updateMetaTag('meta[property="og:image"]', ogImage);
-          updateMetaTag('meta[name="twitter:image"]', ogImage);
-        }
-        
-        // Update OG URL
-        updateMetaTag('meta[property="og:url"]', window.location.href);
-        
-        // Update OG site name
-        if (parsedSettings.siteName || (parsedUser && parsedUser.name)) {
-          updateMetaTag('meta[property="og:site_name"]', parsedSettings.siteName || parsedUser.name);
-        }
+        // Update immediately with localStorage data
+        updateOGTags(parsedUser, parsedSettings);
         
         // Update title if not set from settings
         if (parsedSettings.metaTitle) {
