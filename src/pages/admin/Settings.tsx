@@ -266,11 +266,11 @@ const Settings = () => {
       )}
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="seo">SEO & Meta</TabsTrigger>
           <TabsTrigger value="footer">Footer</TabsTrigger>
-          <TabsTrigger value="contact">Contact Info</TabsTrigger>
+          <TabsTrigger value="contact">Contact</TabsTrigger>
           <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
 
@@ -314,6 +314,164 @@ const Settings = () => {
                   className="min-h-20"
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* GitHub Auto-Sync - Also available here for easy access */}
+          <Card className={autoSyncEnabled ? 'border-green-200 dark:border-green-900' : ''}>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Share2 className="h-5 w-5" />
+                <CardTitle>GitHub Auto-Sync</CardTitle>
+                {autoSyncEnabled && (
+                  <Badge className="bg-green-500">Active</Badge>
+                )}
+              </div>
+              <CardDescription>
+                Automatically commit and publish changes to GitHub when you save
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!autoSyncEnabled ? (
+                <>
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Enable auto-sync:</strong> Configure once to automatically publish all changes to GitHub.
+                      No more manual exports or uploads needed!
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div>
+                      <Label htmlFor="gitHubToken">GitHub Personal Access Token *</Label>
+                      <Input
+                        id="gitHubToken"
+                        type="password"
+                        value={gitHubToken}
+                        onChange={(e) => setGitHubToken(e.target.value)}
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        <a 
+                          href="https://github.com/settings/tokens" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Create token here
+                        </a> • Required scope: <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">repo</code>
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="gitHubOwner">Repository Owner *</Label>
+                        <Input
+                          id="gitHubOwner"
+                          value={gitHubOwner}
+                          onChange={(e) => setGitHubOwner(e.target.value)}
+                          placeholder="MuhamadHanjla01"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="gitHubRepo">Repository Name *</Label>
+                        <Input
+                          id="gitHubRepo"
+                          value={gitHubRepo}
+                          onChange={(e) => setGitHubRepo(e.target.value)}
+                          placeholder="shadcn-ui"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="gitHubBranch">Branch</Label>
+                        <Input
+                          id="gitHubBranch"
+                          value={gitHubBranch}
+                          onChange={(e) => setGitHubBranch(e.target.value)}
+                          placeholder="main"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="gitHubPath">Data Folder Path</Label>
+                        <Input
+                          id="gitHubPath"
+                          value={gitHubPath}
+                          onChange={(e) => setGitHubPath(e.target.value)}
+                          placeholder="public/data"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleTestConnection}
+                        disabled={testingConnection}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        {testingConnection ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                            Testing...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Test Connection
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        onClick={handleGitHubConfigSave}
+                        className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Enable Auto-Sync
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p className="text-sm font-medium mb-2">How to get GitHub Token:</p>
+                    <pre className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                      {getGitHubTokenInstructions()}
+                    </pre>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 dark:text-green-200">
+                      Auto-sync is active! All changes will be automatically published to GitHub.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-2 text-sm">
+                    <p><strong>Repository:</strong> {gitHubConfig?.owner}/{gitHubConfig?.repo}</p>
+                    <p><strong>Branch:</strong> {gitHubConfig?.branch || 'main'}</p>
+                    <p><strong>Path:</strong> {gitHubConfig?.path || 'public/data'}</p>
+                  </div>
+
+                  <Button 
+                    onClick={() => {
+                      localStorage.removeItem('github_sync_config');
+                      setGitHubConfig(null);
+                      setAutoSyncEnabled(false);
+                      setGitHubToken('');
+                      toast.success('GitHub sync disabled');
+                    }}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Disable Auto-Sync
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
