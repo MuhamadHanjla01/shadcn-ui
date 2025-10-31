@@ -113,12 +113,22 @@ const AdminRoutes = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <BrowserRouter>
-        <AdminAuthProvider>
+const App = () => {
+  // Handle GitHub Pages 404.html redirect format
+  useEffect(() => {
+    const path = window.location.search;
+    if (path.startsWith('?/')) {
+      const newPath = path.slice(2).replace(/~and~/g, '&');
+      window.history.replaceState({}, '', import.meta.env.BASE_URL + newPath);
+    }
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <AdminAuthProvider>
           <Routes>
             {/* Public Portfolio Routes with Maintenance Mode Check */}
             <Route
@@ -142,11 +152,12 @@ const App = () => (
             
             {/* Admin Routes - Always Accessible */}
             <Route path="/admin/*" element={<AdminRoutes />} />
-          </Routes>
-        </AdminAuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+            </Routes>
+          </AdminAuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
