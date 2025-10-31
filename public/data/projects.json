@@ -1,0 +1,80 @@
+[
+  {
+    "id": "1761904761958",
+    "title": "scscs",
+    "description": "ccdsdsvsdvvfvcsc",
+    "image": "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600&h=400&fit=crop",
+    "techStack": [
+      "dscdsdsc"
+    ],
+    "githubUrl": "",
+    "liveUrl": "",
+    "featured": true,
+    "category": "Web Application"
+  },
+  {
+    "id": "1",
+    "title": "E-Commerce Platform",
+    "description": "Full-stack e-commerce solution with real-time inventory management, payment processing, and admin dashboard.",
+    "image": "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&h=400&fit=crop",
+    "techStack": [
+      "React",
+      "Node.js",
+      "PostgreSQL",
+      "Stripe",
+      "AWS"
+    ],
+    "githubUrl": "https://github.com/alexchen/ecommerce",
+    "liveUrl": "https://ecommerce-demo.com",
+    "featured": true,
+    "category": "Web Application"
+  },
+  {
+    "id": "2",
+    "title": "Task Management App",
+    "description": "Collaborative task management tool with real-time updates, team collaboration, and advanced filtering.",
+    "image": "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=600&h=400&fit=crop",
+    "techStack": [
+      "React",
+      "TypeScript",
+      "Firebase",
+      "Material-UI"
+    ],
+    "githubUrl": "https://github.com/alexchen/taskmanager",
+    "liveUrl": "https://taskmanager-demo.com",
+    "featured": true,
+    "category": "Productivity"
+  },
+  {
+    "id": "3",
+    "title": "Weather Dashboard",
+    "description": "Beautiful weather dashboard with location-based forecasts, interactive maps, and weather alerts.",
+    "image": "https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?w=600&h=400&fit=crop",
+    "techStack": [
+      "Vue.js",
+      "OpenWeather API",
+      "Chart.js",
+      "Tailwind"
+    ],
+    "githubUrl": "https://github.com/alexchen/weather",
+    "liveUrl": "https://weather-demo.com",
+    "featured": false,
+    "category": "Data Visualization"
+  },
+  {
+    "id": "4",
+    "title": "AI Chat Bot",
+    "description": "Intelligent chatbot with natural language processing, context awareness, and multi-language support.",
+    "image": "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=600&h=400&fit=crop",
+    "techStack": [
+      "Python",
+      "OpenAI API",
+      "FastAPI",
+      "React",
+      "WebSocket"
+    ],
+    "githubUrl": "https://github.com/alexchen/chatbot",
+    "featured": false,
+    "category": "AI/ML"
+  }
+]
