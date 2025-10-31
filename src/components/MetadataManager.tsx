@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { loadSiteSettings } from '@/lib/storage';
+import { loadSiteSettings, loadUserData } from '@/lib/storage';
+import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
+import { userData as defaultUserData } from '@/lib/data';
 
 const MetadataManager = () => {
   const location = useLocation();
+  const [userData, setUserData] = useState(defaultUserData);
 
   // Generate favicon from text
   const generateTextFavicon = (text: string): string => {
@@ -28,9 +31,32 @@ const MetadataManager = () => {
     return canvas.toDataURL('image/png');
   };
 
+  // Load user data on mount
+  useEffect(() => {
+    const loadUser = async () => {
+      const user = await loadDataFromFile(
+        DATA_FILES.user,
+        'portfolio_user_data',
+        defaultUserData
+      );
+      setUserData(user);
+    };
+    loadUser();
+
+    // Listen for user data updates
+    const handleUpdate = () => {
+      loadUser();
+    };
+    window.addEventListener('portfolioDataUpdated', handleUpdate);
+    return () => window.removeEventListener('portfolioDataUpdated', handleUpdate);
+  }, []);
+
   // Update metadata function
   const updateMetadata = () => {
     const settings = loadSiteSettings();
+    
+    // Get current user data (prefer state, fallback to localStorage)
+    const currentUser = userData || loadUserData(defaultUserData);
 
     // Update favicon using theme logo (image or text mode)
     let faviconUrl = '';
@@ -53,9 +79,16 @@ const MetadataManager = () => {
       link.href = faviconUrl;
     }
 
+    // Build dynamic title from user data or settings
+    const ogTitle = settings.metaTitle || `${currentUser.name} - ${currentUser.title}`;
+    const ogDescription = settings.metaDescription || currentUser.tagline || `${currentUser.name} - ${currentUser.title} Portfolio`;
+    const ogImage = settings.ogImage || currentUser.profileImage || '';
+    
     // Update page title
     if (settings.metaTitle) {
       document.title = settings.metaTitle;
+    } else {
+      document.title = `${currentUser.name} - ${currentUser.title}`;
     }
 
     // Update or create meta description
@@ -65,9 +98,7 @@ const MetadataManager = () => {
       metaDescription.name = 'description';
       document.getElementsByTagName('head')[0].appendChild(metaDescription);
     }
-    if (settings.metaDescription) {
-      metaDescription.content = settings.metaDescription;
-    }
+    metaDescription.content = settings.metaDescription || ogDescription;
 
     // Update or create meta keywords
     let metaKeywords = document.querySelector('meta[name="keywords"]') as HTMLMetaElement;
@@ -80,7 +111,7 @@ const MetadataManager = () => {
       metaKeywords.content = settings.metaKeywords;
     }
 
-    // Open Graph tags
+    // Open Graph tags - Use user data for dynamic updates
     const updateOgTag = (property: string, content: string | undefined) => {
       if (!content) return;
       let tag = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
@@ -92,13 +123,15 @@ const MetadataManager = () => {
       tag.content = content;
     };
 
-    updateOgTag('og:title', settings.metaTitle);
-    updateOgTag('og:description', settings.metaDescription);
-    updateOgTag('og:image', settings.ogImage);
-    updateOgTag('og:site_name', settings.siteName);
+    // Use current user data for OG tags
+    updateOgTag('og:title', ogTitle);
+    updateOgTag('og:description', ogDescription);
+    updateOgTag('og:image', ogImage ? (ogImage.startsWith('http') ? ogImage : `${window.location.origin}${ogImage}`) : '');
+    updateOgTag('og:url', window.location.href);
+    updateOgTag('og:site_name', settings.siteName || currentUser.name);
     updateOgTag('og:type', 'website');
 
-    // Twitter Card tags
+    // Twitter Card tags - Use user data
     const updateTwitterTag = (name: string, content: string | undefined) => {
       if (!content) return;
       let tag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
@@ -111,9 +144,9 @@ const MetadataManager = () => {
     };
 
     updateTwitterTag('twitter:card', 'summary_large_image');
-    updateTwitterTag('twitter:title', settings.metaTitle);
-    updateTwitterTag('twitter:description', settings.metaDescription);
-    updateTwitterTag('twitter:image', settings.ogImage);
+    updateTwitterTag('twitter:title', ogTitle);
+    updateTwitterTag('twitter:description', ogDescription);
+    updateTwitterTag('twitter:image', ogImage ? (ogImage.startsWith('http') ? ogImage : `${window.location.origin}${ogImage}`) : '');
     if (settings.twitterHandle) {
       updateTwitterTag('twitter:site', settings.twitterHandle);
       updateTwitterTag('twitter:creator', settings.twitterHandle);
@@ -121,11 +154,15 @@ const MetadataManager = () => {
   };
 
   useEffect(() => {
-    // Update on mount and when location changes
+    // Update on mount and when location or user data changes
     updateMetadata();
 
-    // Listen for settings updates
-    const handleUpdate = () => updateMetadata();
+    // Listen for settings and user data updates
+    const handleUpdate = () => {
+      // Reload user data if updated
+      loadDataFromFile(DATA_FILES.user, 'portfolio_user_data', defaultUserData).then(setUserData);
+      updateMetadata();
+    };
     window.addEventListener('portfolioDataUpdated', handleUpdate);
     window.addEventListener('storage', handleUpdate);
 
@@ -133,7 +170,7 @@ const MetadataManager = () => {
       window.removeEventListener('portfolioDataUpdated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, [location]);
+  }, [location, userData]);
 
   return null; // This component doesn't render anything
 };
