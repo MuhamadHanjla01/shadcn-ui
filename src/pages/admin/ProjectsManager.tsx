@@ -20,6 +20,7 @@ import { projects as initialProjects } from '@/lib/data';
 import { saveProjects } from '@/lib/storage';
 import { Project } from '@/types';
 import { notificationService } from '@/lib/notification-service';
+import { toast } from 'sonner';
 
 const ProjectsManager = () => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
