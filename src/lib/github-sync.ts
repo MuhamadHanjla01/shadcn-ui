@@ -246,8 +246,8 @@ export async function commitFilesToGitHub(
 
   try {
     // Commit files sequentially to avoid SHA conflicts
-    // Wait a bit between commits to ensure GitHub has processed the previous one
-    const commitDelay = 500; // 500ms delay between commits
+    // Increased delay to avoid rate limiting and ensure GitHub processes each commit
+    const commitDelay = 1000; // 1 second delay between commits
     const results: PromiseSettledResult<boolean>[] = [];
     
     for (let i = 0; i < files.length; i++) {
@@ -258,30 +258,84 @@ export async function commitFilesToGitHub(
         await new Promise(resolve => setTimeout(resolve, commitDelay));
       }
       
-      try {
-        await commitFileToGitHub(config, file.path, file.content, commitMessage);
-        results.push({ status: 'fulfilled', value: true });
-      } catch (error: any) {
+      // Retry each file commit up to 3 times on network errors
+      let success = false;
+      let lastError: any = null;
+      
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          console.log(`Retrying commit for ${file.path} (attempt ${attempt + 1}/3)`);
+        }
+        
+        try {
+          await commitFileToGitHub(config, file.path, file.content, commitMessage);
+          results.push({ status: 'fulfilled', value: true });
+          success = true;
+          break; // Success, move to next file
+        } catch (error: any) {
+          lastError = error;
+          // If it's a network error, retry
+          if (error.message?.includes('Network error') || error.message?.includes('Unable to connect') || error instanceof TypeError) {
+            if (attempt < 2) {
+              continue; // Retry
+            }
+          }
+          // If it's not a network error or we've exhausted retries, fail
+          if (attempt === 2 || !error.message?.includes('Network error')) {
+            results.push({ 
+              status: 'rejected', 
+              reason: error 
+            });
+            break;
+          }
+        }
+      }
+      
+      if (!success && lastError) {
         results.push({ 
           status: 'rejected', 
-          reason: error 
+          reason: lastError 
         });
       }
     }
 
     const failed = results.filter(r => r.status === 'rejected');
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
     
     if (failed.length > 0) {
       const errors = failed.map((r: PromiseRejectedResult) => {
         const error = r.reason;
         if (error?.message?.includes('does not match')) {
-          return 'File was modified. Please try again.';
+          return 'File was modified';
+        }
+        if (error?.message?.includes('Network error') || error?.message?.includes('Unable to connect')) {
+          return 'Network connection failed';
+        }
+        if (error?.message?.includes('Invalid GitHub token')) {
+          return 'Invalid token';
         }
         return error?.message || 'Unknown error';
       });
+      
+      // Remove duplicate error messages
+      const uniqueErrors = [...new Set(errors)];
+      
+      let message = `Failed to commit ${failed.length} file(s)`;
+      if (succeeded > 0) {
+        message += ` (${succeeded} succeeded, ${failed.length} failed)`;
+      }
+      
+      if (uniqueErrors.length === 1 && uniqueErrors[0] === 'Network connection failed') {
+        message += `. Error: ${uniqueErrors[0]}. Please check your internet connection and try again.`;
+      } else {
+        message += `. Errors: ${uniqueErrors.join(', ')}`;
+      }
+      
       return {
         success: false,
-        message: `Failed to commit ${failed.length} file(s). Errors: ${errors.join(', ')}`
+        message: message
       };
     }
 
