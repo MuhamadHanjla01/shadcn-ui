@@ -121,9 +121,12 @@
         var decoded = l.search.slice(1).split('&').map(function(s) { 
           return s.replace(/~and~/g, '&')
         }).join('?');
-        window.history.replaceState(null, null,
-            l.pathname.slice(0, -1) + decoded + l.hash
-        );
+        
+        // Handle base path correctly for GitHub Pages
+        var basePath = '/shadcn-ui';
+        var restoredPath = basePath + decoded;
+        
+        window.history.replaceState(null, null, restoredPath + l.hash);
       }
     }(window.location))
   </script>

@@ -10,28 +10,41 @@
     // 
     // This script takes the current url and converts the path and query
     // string into just a query string, and then redirects the browser
-    // to the new url with only a query string and hash fragment,
-    // e.g., https://www.foo.tld/one/two?a=b&c=d#qwe, becomes
-    // https://www.foo.tld/?/one/two&a=b~and~c=d#qwe
-    
-    var pathSegmentsToKeep = 1; // Number of path segments to keep (repository name)
+    // to the new url with only a query string and hash fragment
     
     var l = window.location;
     var basePath = '/shadcn-ui';
     
-    // Get pathname and remove base path
-    var pathname = l.pathname.replace(basePath, '') || '/';
+    // Get the full pathname
+    var pathname = l.pathname;
     
-    // Split path into segments
-    var pathSegments = pathname.split('/').filter(function(segment) {
+    // Remove base path from pathname
+    var routePath = '';
+    if (pathname.startsWith(basePath)) {
+      routePath = pathname.substring(basePath.length);
+    } else {
+      // If base path not found, use the whole pathname (shouldn't happen but just in case)
+      routePath = pathname;
+    }
+    
+    // Ensure routePath starts with / if it's not empty
+    if (routePath && !routePath.startsWith('/')) {
+      routePath = '/' + routePath;
+    }
+    
+    // Remove leading slash for the redirect (we'll add it back in the query)
+    routePath = routePath.replace(/^\/+/, '');
+    
+    // Filter out empty segments and index.html
+    var pathSegments = routePath.split('/').filter(function(segment) {
       return segment !== '' && segment !== 'index.html';
     });
     
-    // Build redirect URL with path in query string
+    // Build redirect URL
     var redirectUrl = basePath + '/?/' + pathSegments.join('/').replace(/&/g, '~and~');
     
-    // Add query string if present
-    if (l.search) {
+    // Add original query string if present (but skip if it's the redirect query)
+    if (l.search && !l.search.startsWith('?/')) {
       redirectUrl += '&' + l.search.slice(1).replace(/&/g, '~and~');
     }
     
