@@ -1,0 +1,42 @@
+{
+  "siteName": "Muhamad Hanjla",
+  "siteDescription": "Personal portfolio website",
+  "seoKeywords": [
+    "portfolio",
+    "developer",
+    "web development"
+  ],
+  "googleAnalyticsId": "",
+  "maintenanceMode": false,
+  "logo": "",
+  "logoMode": "text",
+  "logoText": "MH",
+  "heroLayout": "center",
+  "socialVisibility": {
+    "github": true,
+    "linkedin": true,
+    "twitter": true,
+    "email": true
+  },
+  "favicon": "",
+  "footerText": "© 2024 All rights reserved.",
+  "footerLinks": [
+    {
+      "label": "Privacy Policy",
+      "url": "/privacy"
+    },
+    {
+      "label": "Terms of Service",
+      "url": "/terms"
+    }
+  ],
+  "footerEnabled": false,
+  "contactEmail": "contact@example.com",
+  "contactPhone": "",
+  "contactAddress": "",
+  "metaTitle": "Muhamad Hanjla - Full Stack Developer",
+  "metaDescription": "Professional portfolio showcasing my projects, skills, and experience in web development.",
+  "metaKeywords": "portfolio, web developer, full stack, react, typescript",
+  "ogImage": "",
+  "twitterHandle": ""
+}
