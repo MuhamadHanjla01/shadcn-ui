@@ -84,19 +84,27 @@ async function commitFileToGitHub(
   config: GitHubConfig,
   filePath: string,
   content: string,
-  commitMessage: string
+  commitMessage: string,
+  retryCount: number = 0
 ): Promise<boolean> {
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  
   try {
     const branch = config.branch || 'main';
     const path = config.path || 'public/data';
     const fullPath = `${path}/${filePath}`;
 
-    // Get the current file SHA (if exists)
+    // Prepare file content (base64 encoded)
+    const contentBase64 = btoa(unescape(encodeURIComponent(content)));
+
+    // Fetch the latest SHA right before committing (not cached)
     const getFileUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${fullPath}?ref=${branch}`;
     const getResponse = await fetch(getFileUrl, {
       headers: {
         'Authorization': `token ${config.token}`,
-        'Accept': 'application/vnd.github.v3+json'
+        'Accept': 'application/vnd.github.v3+json',
+        'Cache-Control': 'no-cache'
       }
     });
 
@@ -105,9 +113,6 @@ async function commitFileToGitHub(
       const fileData = await getResponse.json();
       sha = fileData.sha;
     }
-
-    // Prepare file content (base64 encoded)
-    const contentBase64 = btoa(unescape(encodeURIComponent(content)));
 
     // Commit the file
     const putUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${fullPath}`;
@@ -128,13 +133,33 @@ async function commitFileToGitHub(
 
     if (!putResponse.ok) {
       const error = await putResponse.json();
+      
+      // Handle SHA mismatch error with retry
+      if (error.message && error.message.includes('does not match') && retryCount < MAX_RETRIES) {
+        console.log(`SHA mismatch for ${filePath}, retrying... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
+        // Retry with fresh SHA fetch
+        return commitFileToGitHub(config, filePath, content, commitMessage, retryCount + 1);
+      }
+      
       console.error('GitHub API error:', error);
       throw new Error(error.message || 'Failed to commit file');
     }
 
     return true;
   } catch (error) {
-    console.error('Error committing file to GitHub:', error);
+    // Only throw if we've exhausted retries
+    if (retryCount >= MAX_RETRIES) {
+      console.error('Error committing file to GitHub after retries:', error);
+      throw error;
+    }
+    // Retry on network errors
+    if (error instanceof TypeError && retryCount < MAX_RETRIES) {
+      console.log(`Network error for ${filePath}, retrying... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
+      return commitFileToGitHub(config, filePath, content, commitMessage, retryCount + 1);
+    }
     throw error;
   }
 }
@@ -156,15 +181,40 @@ export async function commitFilesToGitHub(
   }
 
   try {
-    // Commit files sequentially (GitHub API doesn't support batch commits easily)
-    const results = await Promise.allSettled(
-      files.map(file => commitFileToGitHub(config, file.path, file.content, commitMessage))
-    );
+    // Commit files sequentially to avoid SHA conflicts
+    // Wait a bit between commits to ensure GitHub has processed the previous one
+    const commitDelay = 500; // 500ms delay between commits
+    const results: PromiseSettledResult<boolean>[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Add delay between commits (except for the first one)
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, commitDelay));
+      }
+      
+      try {
+        await commitFileToGitHub(config, file.path, file.content, commitMessage);
+        results.push({ status: 'fulfilled', value: true });
+      } catch (error: any) {
+        results.push({ 
+          status: 'rejected', 
+          reason: error 
+        });
+      }
+    }
 
     const failed = results.filter(r => r.status === 'rejected');
     
     if (failed.length > 0) {
-      const errors = failed.map((r: PromiseRejectedResult) => r.reason?.message || 'Unknown error');
+      const errors = failed.map((r: PromiseRejectedResult) => {
+        const error = r.reason;
+        if (error?.message?.includes('does not match')) {
+          return 'File was modified. Please try again.';
+        }
+        return error?.message || 'Unknown error';
+      });
       return {
         success: false,
         message: `Failed to commit ${failed.length} file(s). Errors: ${errors.join(', ')}`
