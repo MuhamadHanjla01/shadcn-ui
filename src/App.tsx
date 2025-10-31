@@ -84,40 +84,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Admin Root Handler - Shows login or redirects to dashboard if authenticated
-const AdminRootHandler = () => {
-  const { auth, isLoading } = useAdminAuth();
-  
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-  
-  // If authenticated, redirect to dashboard
-  if (auth.isAuthenticated) {
-    return <Navigate to="/admin/" replace />;
-  }
-  
-  // If not authenticated, show login page
-  return <AdminLogin />;
-};
-
 // Admin Routes Component
 const AdminRoutes = () => {
   return (
     <Routes>
-      {/* Root /admin path - always accessible, shows login */}
-      <Route index element={<AdminRootHandler />} />
-      
-      {/* /admin/login - explicit login path */}
-      <Route path="login" element={<AdminLogin />} />
-      
-      {/* All protected admin routes */}
+      <Route path="/login" element={<AdminLogin />} />
       <Route
-        path="*"
+        path="/*"
         element={
           <ProtectedRoute>
             <AdminLayout />
@@ -140,53 +113,40 @@ const AdminRoutes = () => {
   );
 };
 
-const App = () => {
-  // Handle GitHub Pages 404.html redirect format
-  useEffect(() => {
-    const path = window.location.search;
-    if (path.startsWith('?/')) {
-      const newPath = path.slice(2).replace(/~and~/g, '&');
-      window.history.replaceState({}, '', import.meta.env.BASE_URL + newPath);
-    }
-  }, []);
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <AdminAuthProvider>
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
+        <AdminAuthProvider>
           <Routes>
-            {/* Admin Routes - CRITICAL: Must be BEFORE public catch-all */}
-            {/* Match /admin and /admin/* paths */}
-            <Route path="admin" element={<AdminRoutes />} />
-            <Route path="admin/*" element={<AdminRoutes />} />
-            
-            {/* Public Portfolio Routes - Only matches if NOT /admin */}
+            {/* Public Portfolio Routes with Maintenance Mode Check */}
             <Route
-              path="*"
+              path="/*"
               element={
                 <MaintenanceWrapper>
                   <Layout>
                     <Routes>
-                      <Route index element={<Home />} />
-                      <Route path="about" element={<About />} />
-                      <Route path="projects" element={<Projects />} />
-                      <Route path="blog" element={<Blog />} />
-                      <Route path="blog/:id" element={<BlogPost />} />
-                      <Route path="contact" element={<Contact />} />
+                      <Route path="/" element={<Home />} />
+                      <Route path="/about" element={<About />} />
+                      <Route path="/projects" element={<Projects />} />
+                      <Route path="/blog" element={<Blog />} />
+                      <Route path="/blog/:id" element={<BlogPost />} />
+                      <Route path="/contact" element={<Contact />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Layout>
                 </MaintenanceWrapper>
               }
             />
-            </Routes>
-          </AdminAuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-};
+            
+            {/* Admin Routes - Always Accessible */}
+            <Route path="/admin/*" element={<AdminRoutes />} />
+          </Routes>
+        </AdminAuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
