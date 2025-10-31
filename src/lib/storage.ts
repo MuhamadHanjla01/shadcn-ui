@@ -1,38 +1,5 @@
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
 
-// NEW SYSTEM: Data stored in portfolio-data.json (deployed with code)
-// localStorage only used for admin editing (not for displaying to public)
-const STORAGE_VERSION = '3.0.0'; // Major change: JSON-based storage
-const VERSION_KEY = 'portfolio_storage_version';
-
-// Check if we're in admin context
-const isAdminContext = () => {
-  return window.location.pathname.includes('/admin');
-};
-
-// Check and clear old storage if version mismatch
-const checkStorageVersion = () => {
-  try {
-    const currentVersion = localStorage.getItem(VERSION_KEY);
-    if (currentVersion !== STORAGE_VERSION) {
-      console.log('⚠️ Storage structure changed. localStorage is now only for admin editing.');
-      console.log('📦 Public data now loads from portfolio-data.json file.');
-      
-      // Clear old localStorage (no longer the source of truth)
-      const keysToRemove = Object.keys(localStorage).filter(key => key.startsWith('portfolio_'));
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      
-      localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
-      console.log('Storage upgraded to version:', STORAGE_VERSION);
-    }
-  } catch (error) {
-    console.error('Error checking storage version:', error);
-  }
-};
-
-// Run version check on module load
-checkStorageVersion();
-
 // Local storage utility for persisting admin changes
 const STORAGE_KEYS = {
   USER_DATA: 'portfolio_user_data',
@@ -52,16 +19,8 @@ const STORAGE_KEYS = {
 export const saveToStorage = <T>(key: string, data: T): void => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
-    
-    // Dispatch events for same-page updates
+    // Dispatch event for real-time updates
     window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { detail: { key, data } }));
-    window.dispatchEvent(new StorageEvent('storage', {
-      key,
-      newValue: JSON.stringify(data),
-      url: window.location.href
-    }));
-    
-    console.log(`💾 Saved ${key}`);
   } catch (error) {
     console.error('Error saving to storage:', error);
   }
@@ -69,20 +28,8 @@ export const saveToStorage = <T>(key: string, data: T): void => {
 
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   try {
-    // Only load from localStorage in admin context
-    // Public pages always use default (from JSON file)
-    if (isAdminContext()) {
-      const stored = localStorage.getItem(key);
-      if (stored) {
-        console.log(`📖 [ADMIN] Loading ${key} from localStorage`);
-        return JSON.parse(stored);
-      }
-      // Admin but no localStorage - use default from JSON
-      console.log(`📦 [ADMIN-FALLBACK] Loading ${key} from portfolio-data.json`);
-      return defaultValue;
-    }
-    console.log(`📦 [PUBLIC] Loading ${key} from portfolio-data.json`);
-    return defaultValue;
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : defaultValue;
   } catch (error) {
     console.error('Error loading from storage:', error);
     return defaultValue;
@@ -273,7 +220,7 @@ export const saveSiteSettings = (data: SiteSettings) => {
 
 export const loadSiteSettings = (): SiteSettings => {
   return loadFromStorage(STORAGE_KEYS.SITE_SETTINGS, {
-    siteName: 'Muhamad Hanjla',
+    siteName: 'Portfolio',
     siteDescription: 'Personal portfolio website',
     seoKeywords: ['portfolio', 'developer', 'web development'],
     googleAnalyticsId: '',

@@ -8,16 +8,13 @@ import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { loadUserData, loadSiteSettings, loadStats } from '@/lib/storage';
 
 const Home = () => {
-  const [displayText, setDisplayText] = useState('');
-  const [currentIndex, setCurrentIndex] = useState(0);
-  
-  // Load data from localStorage/Firebase
   const [userData, setUserData] = useState(initialUserData);
   const [stats, setStats] = useState(initialStats);
-  const [heroLayout, setHeroLayout] = useState<'left'|'center'|'right'>('center');
-  const [socialVisibility, setSocialVisibility] = useState({ github: true, linkedin: true, twitter: true, email: true });
-  
+  const [displayText, setDisplayText] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
   const fullText = userData.tagline;
+  const [heroLayout, setHeroLayout] = useState<'left'|'center'|'right'>(loadSiteSettings().heroLayout || 'center');
+  const [socialVisibility, setSocialVisibility] = useState(loadSiteSettings().socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
 
   const handleResumeDownload = async (e: any) => {
     if (!userData.resume) return;
@@ -40,31 +37,32 @@ const Home = () => {
     }
   };
 
-  // Load user data with real-time updates
+  // Load user data from localStorage
   useEffect(() => {
+    // Track page view for analytics
     trackPageView('home');
-    
+
     const loadData = () => {
       const stored = loadUserData(initialUserData);
       setUserData(stored);
       const storedStats = loadStats(initialStats);
       setStats(storedStats);
       const ss = loadSiteSettings();
-      setHeroLayout(ss.heroLayout || 'center');
+      setHeroLayout((ss.heroLayout as 'left'|'center'|'right') || 'center');
       setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
     };
-    
+
     loadData();
-    
-    // Listen for updates
-    const handleUpdate = () => loadData();
-    window.addEventListener('portfolioDataUpdated', handleUpdate);
-    window.addEventListener('storage', handleUpdate);
-    
-    return () => {
-      window.removeEventListener('portfolioDataUpdated', handleUpdate);
-      window.removeEventListener('storage', handleUpdate);
+
+    // Listen for updates from admin panel
+    const handleDataUpdate = () => {
+      loadData();
+      setDisplayText('');
+      setCurrentIndex(0);
     };
+
+    window.addEventListener('portfolioDataUpdated', handleDataUpdate);
+    return () => window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
   }, []);
 
   // Typing animation effect

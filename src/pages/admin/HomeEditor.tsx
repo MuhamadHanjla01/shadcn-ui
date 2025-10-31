@@ -22,7 +22,6 @@ import {
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { saveUserData, loadUserData, loadSiteSettings, saveSiteSettings, saveStats, loadStats } from '@/lib/storage';
 import type { Stat } from '@/types';
-import { toast } from 'sonner';
 
 const HomeEditor = () => {
   const [homeData, setHomeData] = useState({
@@ -177,13 +176,6 @@ const HomeEditor = () => {
       window.dispatchEvent(new CustomEvent('portfolioDataUpdated'));
       
       setSaveStatus('success');
-      
-      // Show success toast with export reminder
-      toast.success('✅ Changes saved!', {
-        description: '💡 Export data in Settings and git push to deploy',
-        duration: 5000,
-      });
-      
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Error saving data:', error);

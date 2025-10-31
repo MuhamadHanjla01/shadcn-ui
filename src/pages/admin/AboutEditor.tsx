@@ -16,7 +16,6 @@ import {
 import { userData as initialUserData, skills as initialSkills, experiences as initialExperiences, achievements as initialAchievements } from '@/lib/data';
 import { saveUserData, saveSkills, saveExperiences, saveAchievements } from '@/lib/storage';
 import { Skill, Experience, Achievement } from '@/types';
-import { toast } from 'sonner';
 
 const AboutEditor = () => {
   const [bio, setBio] = useState(initialUserData.bio);
@@ -50,13 +49,6 @@ const AboutEditor = () => {
       saveAchievements(achievements);
       
       setSaveStatus('success');
-      
-      // Show success toast
-      toast.success('✅ About section saved!', {
-        description: '💡 Export data in Settings and git push to deploy',
-        duration: 5000,
-      });
-      
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Error saving data:', error);

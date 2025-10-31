@@ -12,7 +12,6 @@ import {
   Sun
 } from 'lucide-react';
 import { loadThemeSettings, saveThemeSettings, ThemeSettings, loadSiteSettings, saveSiteSettings, SiteSettings } from '@/lib/storage';
-import { toast } from 'sonner';
 
 const ThemeSettingsPage = () => {
   const [settings, setSettings] = useState<ThemeSettings>(loadThemeSettings());
@@ -27,21 +26,7 @@ const ThemeSettingsPage = () => {
     try {
       saveThemeSettings(settings);
       saveSiteSettings(siteSettings);
-      
-      // Broadcast theme changes to all tabs/pages
-      window.dispatchEvent(new CustomEvent('themeChanged', { 
-        detail: { settings, siteSettings } 
-      }));
-      
-      console.log('🎨 Theme settings saved and broadcasted');
-      
       setSaveStatus('success');
-      
-      // Save notification
-      toast.success('✅ Theme settings saved!', {
-        description: '💡 Export data in Settings and git push to deploy',
-        duration: 5000,
-      });
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Error saving theme settings:', error);

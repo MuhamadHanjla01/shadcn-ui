@@ -18,7 +18,6 @@ import { blogPosts as initialBlogPosts } from '@/lib/data';
 import { saveBlogPosts } from '@/lib/storage';
 import { BlogPost } from '@/types';
 import { notificationService } from '@/lib/notification-service';
-import { toast } from 'sonner';
 
 const BlogManager = () => {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>(initialBlogPosts);
@@ -45,12 +44,6 @@ const BlogManager = () => {
         `Successfully updated ${blogPosts.length} blog post${blogPosts.length !== 1 ? 's' : ''}`,
         '/admin/blog'
       );
-      
-      // Save notification
-      toast.success('✅ Blog posts saved!', {
-        description: '💡 Export data in Settings and git push to deploy',
-        duration: 5000,
-      });
       
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {

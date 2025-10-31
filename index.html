@@ -5,18 +5,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" type="image/png">
-  
-  <!-- Cache Control - Force fresh content (Desktop & Mobile) -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  
-  <!-- Mobile-specific cache control -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta http-equiv="x-ua-compatible" content="IE=edge" />
-  
   <title>Loading...</title>
   
   <!-- Immediately load settings from localStorage to prevent flash of old content -->
@@ -112,83 +100,18 @@
     })();
   </script>
   
-  <meta name="description" content="Full Stack Developer specializing in React, TypeScript, and modern web technologies. View my portfolio, projects, and get in touch." />
-  <meta name="author" content="Muhamad Hanjla" />
-  <meta name="keywords" content="Full Stack Developer, React, TypeScript, Web Development, Portfolio, Muhamad Hanjla" />
+  <meta name="description" content="Full Stack Developer specializing in React, Node.js, and modern web technologies. View my portfolio, projects, and get in touch." />
+  <meta name="author" content="Alex Chen" />
+  <meta name="keywords" content="Full Stack Developer, React, Node.js, TypeScript, Web Development, Portfolio" />
 
-  <meta property="og:title" content="Muhamad Hanjla - Full Stack Developer Portfolio" />
-  <meta property="og:description" content="Full Stack Developer specializing in React, TypeScript, and modern web technologies. View my portfolio, projects, and get in touch." />
+  <meta property="og:title" content="Alex Chen - Full Stack Developer Portfolio" />
+  <meta property="og:description" content="Full Stack Developer specializing in React, Node.js, and modern web technologies. View my portfolio, projects, and get in touch." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&h=630&fit=crop&crop=face&v=2024" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Muhamad Hanjla - Full Stack Developer" />
+  <meta property="og:image" content="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&h=630&fit=crop&crop=face" />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Muhamad Hanjla - Full Stack Developer Portfolio" />
-  <meta name="twitter:description" content="Full Stack Developer specializing in React, TypeScript, and modern web technologies." />
-
-  <!-- Force reload on mobile devices - Clear all caches -->
-  <script>
-    (function() {
-      // Clear any old service workers
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for(let registration of registrations) {
-            registration.unregister();
-          }
-        });
-      }
-      
-      // Clear old caches
-      if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (let name of names) {
-            caches.delete(name);
-          }
-        });
-      }
-      
-      // Force reload on mobile if cached (aggressive cache clearing)
-      if ('performance' in window && performance.navigation) {
-        // Check if page was loaded from cache
-        if (performance.navigation.type === performance.navigation.TYPE_BACK_FORWARD) {
-          // User navigated using back/forward button - reload from server
-          window.location.reload();
-        }
-      }
-      
-      // Clear sessionStorage on mobile browsers
-      try {
-        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-          var lastClear = sessionStorage.getItem('lastCacheClear');
-          var now = Date.now();
-          // Clear cache every 5 minutes on mobile
-          if (!lastClear || (now - parseInt(lastClear)) > 300000) {
-            sessionStorage.setItem('lastCacheClear', now.toString());
-            window.location.reload();
-          }
-        }
-      } catch(e) {
-        console.warn('Cache clear failed:', e);
-      }
-    })();
-  </script>
-
-  <!-- Single Page Apps for GitHub Pages -->
-  <!-- This script checks for a redirect and restores the original URL -->
-  <script>
-    (function(l) {
-      if (l.search[1] === '/' ) {
-        var decoded = l.search.slice(1).split('&').map(function(s) { 
-          return s.replace(/~and~/g, '&')
-        }).join('?');
-        window.history.replaceState(null, null,
-            l.pathname.slice(0, -1) + decoded + l.hash
-        );
-      }
-    }(window.location))
-  </script>
+  <meta name="twitter:title" content="Alex Chen - Full Stack Developer Portfolio" />
+  <meta name="twitter:description" content="Full Stack Developer specializing in React, Node.js, and modern web technologies." />
 
 </head>
 
