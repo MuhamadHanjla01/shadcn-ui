@@ -271,6 +271,8 @@ export interface SiteSettings {
 
 export const saveSiteSettings = (data: SiteSettings) => {
   saveToStorage(STORAGE_KEYS.SITE_SETTINGS, data);
+  // Dispatch event for real-time updates
+  window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { detail: { key: STORAGE_KEYS.SITE_SETTINGS, data } }));
 };
 
 export const loadSiteSettings = (): SiteSettings => {

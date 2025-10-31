@@ -1,5 +1,6 @@
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
 import { loadUserData, loadSkills, loadExperiences, loadAchievements, loadProjects, loadBlogPosts, loadStats } from './storage';
+import { loadDataFromFile, DATA_FILES } from './data-sync';
 
 // Default data
 const defaultUserData: User = {

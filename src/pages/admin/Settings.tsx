@@ -28,6 +28,16 @@ import {
   Share2
 } from 'lucide-react';
 import { loadSiteSettings, saveSiteSettings, SiteSettings, clearAllStorage } from '@/lib/storage';
+import { exportDataToFile, getUploadInstructions } from '@/lib/data-sync';
+import { 
+  loadGitHubConfig, 
+  saveGitHubConfig, 
+  isGitHubSyncConfigured, 
+  testGitHubConnection,
+  exportAndCommitToGitHub,
+  getGitHubTokenInstructions,
+  type GitHubConfig
+} from '@/lib/github-sync';
 import { toast } from 'sonner';
 
 const Settings = () => {
@@ -36,15 +46,25 @@ const Settings = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [uploadingOgImage, setUploadingOgImage] = useState(false);
   const ogImageInputRef = useRef<HTMLInputElement>(null);
+  
+  // GitHub Sync Configuration
+  const [gitHubConfig, setGitHubConfig] = useState<GitHubConfig | null>(loadGitHubConfig());
+  const [gitHubToken, setGitHubToken] = useState('');
+  const [gitHubOwner, setGitHubOwner] = useState(gitHubConfig?.owner || 'MuhamadHanjla01');
+  const [gitHubRepo, setGitHubRepo] = useState(gitHubConfig?.repo || 'shadcn-ui');
+  const [gitHubBranch, setGitHubBranch] = useState(gitHubConfig?.branch || 'main');
+  const [gitHubPath, setGitHubPath] = useState(gitHubConfig?.path || 'public/data');
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(isGitHubSyncConfigured());
 
   const handleSave = async () => {
     setIsSaving(true);
     setSaveStatus('idle');
 
     try {
+      // Save to localStorage first
       saveSiteSettings(settings);
       setSaveStatus('success');
-      toast.success('Settings saved successfully!');
       
       // Update favicon dynamically
       if (settings.favicon) {
@@ -63,6 +83,35 @@ const Settings = () => {
       // Dispatch custom event for maintenance mode changes
       window.dispatchEvent(new Event('maintenanceModeChange'));
       
+      // Auto-commit to GitHub if configured
+      if (autoSyncEnabled && isGitHubSyncConfigured()) {
+        try {
+          const result = await exportAndCommitToGitHub(
+            { 'site-settings': settings },
+            'Update site settings (automatic sync)'
+          );
+          
+          if (result.success) {
+            toast.success('Settings saved and published automatically!', {
+              description: 'Changes will be live in 1-2 minutes'
+            });
+          } else {
+            toast.warning('Settings saved locally, but GitHub sync failed', {
+              description: result.message
+            });
+          }
+        } catch (error: any) {
+          console.error('GitHub sync error:', error);
+          toast.warning('Settings saved locally, but GitHub sync failed', {
+            description: error.message || 'Unknown error'
+          });
+        }
+      } else {
+        toast.success('Settings saved successfully!', {
+          description: autoSyncEnabled ? 'Enable GitHub Sync to auto-publish changes' : undefined
+        });
+      }
+      
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -71,6 +120,53 @@ const Settings = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleGitHubConfigSave = async () => {
+    if (!gitHubToken || !gitHubOwner || !gitHubRepo) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const config: GitHubConfig = {
+      token: gitHubToken,
+      owner: gitHubOwner,
+      repo: gitHubRepo,
+      branch: gitHubBranch,
+      path: gitHubPath
+    };
+
+    saveGitHubConfig(config);
+    setGitHubConfig(config);
+    setAutoSyncEnabled(true);
+    toast.success('GitHub sync configured successfully!');
+  };
+
+  const handleTestConnection = async () => {
+    if (!gitHubToken || !gitHubOwner || !gitHubRepo) {
+      toast.error('Please fill in all required fields first');
+      return;
+    }
+
+    setTestingConnection(true);
+    const config: GitHubConfig = {
+      token: gitHubToken,
+      owner: gitHubOwner,
+      repo: gitHubRepo,
+      branch: gitHubBranch,
+      path: gitHubPath
+    };
+
+    saveGitHubConfig(config);
+    const result = await testGitHubConnection();
+    
+    if (result.success) {
+      toast.success(result.message);
+    } else {
+      toast.error(result.message);
+    }
+    
+    setTestingConnection(false);
   };
 
   const handleReset = () => {
@@ -494,6 +590,164 @@ const Settings = () => {
 
         {/* Advanced Tab */}
         <TabsContent value="advanced" className="space-y-6">
+          {/* GitHub Sync Configuration */}
+          <Card className={autoSyncEnabled ? 'border-green-200 dark:border-green-900' : ''}>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Share2 className="h-5 w-5" />
+                <CardTitle>GitHub Auto-Sync</CardTitle>
+                {autoSyncEnabled && (
+                  <Badge className="bg-green-500">Active</Badge>
+                )}
+              </div>
+              <CardDescription>
+                Automatically commit and publish changes to GitHub when you save
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!autoSyncEnabled ? (
+                <>
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Enable auto-sync:</strong> Configure once to automatically publish all changes to GitHub.
+                      No more manual exports or uploads needed!
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div>
+                      <Label htmlFor="gitHubToken">GitHub Personal Access Token *</Label>
+                      <Input
+                        id="gitHubToken"
+                        type="password"
+                        value={gitHubToken}
+                        onChange={(e) => setGitHubToken(e.target.value)}
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        <a 
+                          href="https://github.com/settings/tokens" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Create token here
+                        </a> • Required scope: <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">repo</code>
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="gitHubOwner">Repository Owner *</Label>
+                        <Input
+                          id="gitHubOwner"
+                          value={gitHubOwner}
+                          onChange={(e) => setGitHubOwner(e.target.value)}
+                          placeholder="MuhamadHanjla01"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="gitHubRepo">Repository Name *</Label>
+                        <Input
+                          id="gitHubRepo"
+                          value={gitHubRepo}
+                          onChange={(e) => setGitHubRepo(e.target.value)}
+                          placeholder="shadcn-ui"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="gitHubBranch">Branch</Label>
+                        <Input
+                          id="gitHubBranch"
+                          value={gitHubBranch}
+                          onChange={(e) => setGitHubBranch(e.target.value)}
+                          placeholder="main"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="gitHubPath">Data Folder Path</Label>
+                        <Input
+                          id="gitHubPath"
+                          value={gitHubPath}
+                          onChange={(e) => setGitHubPath(e.target.value)}
+                          placeholder="public/data"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleTestConnection}
+                        disabled={testingConnection}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        {testingConnection ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                            Testing...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Test Connection
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        onClick={handleGitHubConfigSave}
+                        className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Enable Auto-Sync
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p className="text-sm font-medium mb-2">How to get GitHub Token:</p>
+                    <pre className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                      {getGitHubTokenInstructions()}
+                    </pre>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800 dark:text-green-200">
+                      Auto-sync is active! All changes will be automatically published to GitHub.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-2 text-sm">
+                    <p><strong>Repository:</strong> {gitHubConfig?.owner}/{gitHubConfig?.repo}</p>
+                    <p><strong>Branch:</strong> {gitHubConfig?.branch || 'main'}</p>
+                    <p><strong>Path:</strong> {gitHubConfig?.path || 'public/data'}</p>
+                  </div>
+
+                  <Button 
+                    onClick={() => {
+                      localStorage.removeItem('github_sync_config');
+                      setGitHubConfig(null);
+                      setAutoSyncEnabled(false);
+                      setGitHubToken('');
+                      toast.success('GitHub sync disabled');
+                    }}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Disable Auto-Sync
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -539,6 +793,44 @@ const Settings = () => {
                   checked={settings.maintenanceMode}
                   onCheckedChange={(checked) => setSettings({ ...settings, maintenanceMode: checked })}
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Share2 className="h-5 w-5" />
+                <CardTitle>Export Settings</CardTitle>
+              </div>
+              <CardDescription>Export settings to make changes visible to all users</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Important:</strong> Changes you make are saved to your browser's localStorage. 
+                  To make them visible to all users, you need to export and upload the data files to GitHub.
+                </AlertDescription>
+              </Alert>
+              
+              <Button 
+                onClick={() => {
+                  exportDataToFile(settings, 'site-settings.json');
+                  toast.success('Settings exported! Upload to public/data/ folder on GitHub.');
+                }}
+                className="w-full"
+                variant="outline"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Export Settings (site-settings.json)
+              </Button>
+              
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <p className="text-sm font-medium mb-2">How to publish changes:</p>
+                <pre className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                  {getUploadInstructions()}
+                </pre>
               </div>
             </CardContent>
           </Card>
