@@ -22,6 +22,7 @@ import {
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { saveUserData, loadUserData, loadSiteSettings, saveSiteSettings, saveStats, loadStats } from '@/lib/storage';
 import type { Stat } from '@/types';
+import { toast } from 'sonner';
 
 const HomeEditor = () => {
   const [homeData, setHomeData] = useState({
@@ -177,9 +178,15 @@ const HomeEditor = () => {
       const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
       if (isGitHubSyncConfigured()) {
         try {
+          // Ensure all required user data fields are included
+          const completeUserData = {
+            ...dataToSave,
+            bio: dataToSave.bio || initialUserData.bio, // Ensure bio is included
+          };
+          
           const result = await exportAndCommitToGitHub(
             {
-              'user': dataToSave,
+              'user': completeUserData,
               'stats': stats,
               'site-settings': updatedSettings
             },
@@ -187,13 +194,25 @@ const HomeEditor = () => {
           );
           
           if (result.success) {
-            // Success - data will be published automatically
+            toast.success('Changes saved and published!', {
+              description: 'Users will see updates in 1-2 minutes'
+            });
           } else {
             console.warn('GitHub sync failed:', result.message);
+            toast.warning('Saved locally, but GitHub sync failed', {
+              description: result.message
+            });
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('GitHub sync error:', error);
+          toast.error('Failed to publish to GitHub', {
+            description: error.message || 'Unknown error'
+          });
         }
+      } else {
+        toast.success('Saved locally!', {
+          description: 'Enable GitHub Auto-Sync to publish changes'
+        });
       }
       
       // Dispatch custom event to notify other components

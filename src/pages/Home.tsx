@@ -56,6 +56,7 @@ const Home = () => {
         initialStats
       );
       
+      // Update state with loaded data
       setUserData(userData);
       setStats(stats);
       
@@ -68,6 +69,17 @@ const Home = () => {
       
       setHeroLayout((ss.heroLayout as 'left'|'center'|'right') || 'center');
       setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+      
+      // Debug: Log what data was loaded
+      if (import.meta.env.DEV) {
+        console.log('📥 Loaded user data:', { 
+          name: userData.name, 
+          title: userData.title,
+          tagline: userData.tagline,
+          profileImage: userData.profileImage ? '✅ Set' : '❌ Missing',
+          resume: userData.resume ? '✅ Set' : '❌ Missing'
+        });
+      }
     };
 
     loadData();

@@ -193,9 +193,20 @@ export async function exportAndCommitToGitHub(
   commitMessage: string = 'Update portfolio data'
 ): Promise<{ success: boolean; message: string }> {
   try {
-    // Convert data to JSON files
+    // Convert data to JSON files with correct filenames
+    const fileMap: { [key: string]: string } = {
+      'user': 'user.json',
+      'skills': 'skills.json',
+      'experiences': 'experiences.json',
+      'achievements': 'achievements.json',
+      'projects': 'projects.json',
+      'blog-posts': 'blog-posts.json',
+      'stats': 'stats.json',
+      'site-settings': 'site-settings.json'
+    };
+    
     const files = Object.entries(data).map(([key, value]) => ({
-      path: `${key}.json`,
+      path: fileMap[key] || `${key}.json`, // Use mapped filename or fallback
       content: JSON.stringify(value, null, 2)
     }));
 

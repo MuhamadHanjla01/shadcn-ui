@@ -16,18 +16,23 @@ import { SiteSettings } from './storage';
 // Use base path from vite config (for GitHub Pages subdirectory)
 const BASE_PATH = import.meta.env.BASE_URL || '/shadcn-ui/';
 const DATA_BASE_PATH = `${BASE_PATH.replace(/\/$/, '')}/data`;
-const CACHE_BUST_VERSION = 'v1';
 
-// Data file paths with cache busting
+// Get data file path with dynamic cache busting (called each time)
+const getDataFilePath = (filename: string): string => {
+  const timestamp = Date.now();
+  return `${DATA_BASE_PATH}/${filename}?t=${timestamp}`;
+};
+
+// Data file paths - functions that return paths with fresh cache busting
 export const DATA_FILES = {
-  user: `${DATA_BASE_PATH}/user.json?${CACHE_BUST_VERSION}`,
-  skills: `${DATA_BASE_PATH}/skills.json?${CACHE_BUST_VERSION}`,
-  experiences: `${DATA_BASE_PATH}/experiences.json?${CACHE_BUST_VERSION}`,
-  achievements: `${DATA_BASE_PATH}/achievements.json?${CACHE_BUST_VERSION}`,
-  projects: `${DATA_BASE_PATH}/projects.json?${CACHE_BUST_VERSION}`,
-  blogPosts: `${DATA_BASE_PATH}/blog-posts.json?${CACHE_BUST_VERSION}`,
-  stats: `${DATA_BASE_PATH}/stats.json?${CACHE_BUST_VERSION}`,
-  siteSettings: `${DATA_BASE_PATH}/site-settings.json?${CACHE_BUST_VERSION}`
+  get user() { return getDataFilePath('user.json'); },
+  get skills() { return getDataFilePath('skills.json'); },
+  get experiences() { return getDataFilePath('experiences.json'); },
+  get achievements() { return getDataFilePath('achievements.json'); },
+  get projects() { return getDataFilePath('projects.json'); },
+  get blogPosts() { return getDataFilePath('blog-posts.json'); },
+  get stats() { return getDataFilePath('stats.json'); },
+  get siteSettings() { return getDataFilePath('site-settings.json'); }
 } as const;
 
 /**
@@ -40,11 +45,19 @@ export async function loadDataFromFile<T>(
 ): Promise<T> {
   try {
     // Try to fetch from JSON file first (for public users)
-    const response = await fetch(filePath, {
-      cache: 'no-cache',
+    // Use timestamp-based cache busting
+    const timestamp = Date.now();
+    const urlWithCache = filePath.includes('?') 
+      ? `${filePath}&t=${timestamp}` 
+      : `${filePath}?t=${timestamp}`;
+    
+    const response = await fetch(urlWithCache, {
+      method: 'GET',
+      cache: 'no-store', // Prevent any caching
       headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
 
@@ -54,11 +67,19 @@ export async function loadDataFromFile<T>(
       if (typeof window !== 'undefined') {
         localStorage.setItem(localStorageKey, JSON.stringify(data));
       }
+      console.log(`✅ Loaded ${filePath} from shared JSON file`);
       return data;
+    } else if (response.status === 404) {
+      console.log(`📝 ${filePath} not found (404) - JSON files not created yet. Using localStorage fallback.`);
+      console.log(`💡 Tip: Enable GitHub Auto-Sync in Settings to auto-publish changes!`);
+    } else {
+      console.log(`⚠️ ${filePath} returned ${response.status}, using localStorage fallback`);
     }
-  } catch (error) {
+  } catch (error: any) {
     // File doesn't exist or network error - fall back to localStorage
-    console.log(`Failed to load ${filePath}, using localStorage fallback`);
+    if (error.name !== 'TypeError') { // Ignore CORS/network errors in console spam
+      console.log(`⚠️ Failed to load ${filePath}, using localStorage fallback:`, error.message);
+    }
   }
 
   // Fallback to localStorage (for admin preview or when files don't exist)
