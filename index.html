@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" type="image/png">
+  <title>Loading...</title>
+  
+  <!-- Immediately load settings from localStorage to prevent flash of old content -->
+  <script>
+    (function() {
+      try {
+        const settings = localStorage.getItem('portfolio_site_settings');
+        if (settings) {
+          const parsed = JSON.parse(settings);
+          
+          // Update title immediately
+          if (parsed.metaTitle) {
+            document.title = parsed.metaTitle;
+          }
+          
+          // Generate favicon from text
+          function generateTextFavicon(text) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            if (!ctx) return '';
+            
+            // Background
+            ctx.fillStyle = '#2563eb'; // blue-600
+            ctx.fillRect(0, 0, 64, 64);
+            
+            // Text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 32px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 32, 32);
+            
+            return canvas.toDataURL('image/png');
+          }
+
+          // Update favicon using theme logo (image or text mode)
+          var faviconUrl = '';
+          if (parsed.logoMode === 'text' && parsed.logoText) {
+            // Generate favicon from text
+            faviconUrl = generateTextFavicon(parsed.logoText);
+          } else if (parsed.logo) {
+            // Use image logo
+            faviconUrl = parsed.logo;
+          }
+          
+          if (faviconUrl) {
+            const existingIcon = document.querySelector("link[rel*='icon']");
+            if (existingIcon) {
+              existingIcon.setAttribute('href', faviconUrl);
+              existingIcon.setAttribute('type', 'image/x-icon');
+            } else {
+              const newIcon = document.createElement('link');
+              newIcon.rel = 'icon';
+              newIcon.type = 'image/x-icon';
+              newIcon.href = faviconUrl;
+              document.head.appendChild(newIcon);
+            }
+          }
+          
+          // Update meta description
+          if (parsed.metaDescription) {
+            let metaDesc = document.querySelector('meta[name="description"]');
+            if (metaDesc) {
+              metaDesc.setAttribute('content', parsed.metaDescription);
+            } else {
+              metaDesc = document.createElement('meta');
+              metaDesc.name = 'description';
+              metaDesc.content = parsed.metaDescription;
+              document.head.appendChild(metaDesc);
+            }
+          }
+          
+          // Update meta keywords
+          if (parsed.metaKeywords) {
+            let metaKeys = document.querySelector('meta[name="keywords"]');
+            if (metaKeys) {
+              metaKeys.setAttribute('content', parsed.metaKeywords);
+            } else {
+              metaKeys = document.createElement('meta');
+              metaKeys.name = 'keywords';
+              metaKeys.content = parsed.metaKeywords;
+              document.head.appendChild(metaKeys);
+            }
+          }
+        }
+      } catch (e) {
+        // Silently fail - React will handle it
+        console.error('Error loading initial site settings:', e);
+      }
+    })();
+  </script>
+  
+  <meta name="description" content="Full Stack Developer specializing in React, Node.js, and modern web technologies. View my portfolio, projects, and get in touch." />
+  <meta name="author" content="Alex Chen" />
+  <meta name="keywords" content="Full Stack Developer, React, Node.js, TypeScript, Web Development, Portfolio" />
+
+  <meta property="og:title" content="Alex Chen - Full Stack Developer Portfolio" />
+  <meta property="og:description" content="Full Stack Developer specializing in React, Node.js, and modern web technologies. View my portfolio, projects, and get in touch." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&h=630&fit=crop&crop=face" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Alex Chen - Full Stack Developer Portfolio" />
+  <meta name="twitter:description" content="Full Stack Developer specializing in React, Node.js, and modern web technologies." />
+
+  <!-- Single Page Apps for GitHub Pages -->
+  <!-- This script checks for a redirect and restores the original URL -->
+  <script>
+    (function(l) {
+      if (l.search[1] === '/' ) {
+        var decoded = l.search.slice(1).split('&').map(function(s) { 
+          return s.replace(/~and~/g, '&')
+        }).join('?');
+        window.history.replaceState(null, null,
+            l.pathname.slice(0, -1) + decoded + l.hash
+        );
+      }
+    }(window.location))
+  </script>
+
+  <script type="module" crossorigin src="/shadcn-ui/assets/index-BrqFxUsw.js"></script>
+  <link rel="modulepreload" crossorigin href="/shadcn-ui/assets/vendor-FrrXPGxH.js">
+  <link rel="stylesheet" crossorigin href="/shadcn-ui/assets/index-CYXnHMPS.css">
+</head>
+
+<body>
+  <div id="root"></div>
+</body>
+
+</html>

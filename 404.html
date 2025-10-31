@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Redirecting...</title>
+  <script>
+    // Single Page Apps for GitHub Pages
+    // MIT License
+    // https://github.com/rafgraph/spa-github-pages
+    // 
+    // This script takes the current url and converts the path and query
+    // string into just a query string, and then redirects the browser
+    // to the new url with only a query string and hash fragment,
+    // e.g., https://www.foo.tld/one/two?a=b&c=d#qwe, becomes
+    // https://www.foo.tld/?/one/two&a=b~and~c=d#qwe
+    
+    var pathSegmentsToKeep = 1; // Number of path segments to keep (repository name)
+    
+    var l = window.location;
+    var basePath = '/shadcn-ui';
+    
+    // Get pathname and remove base path
+    var pathname = l.pathname.replace(basePath, '') || '/';
+    
+    // Split path into segments
+    var pathSegments = pathname.split('/').filter(function(segment) {
+      return segment !== '' && segment !== 'index.html';
+    });
+    
+    // Build redirect URL with path in query string
+    var redirectUrl = basePath + '/?/' + pathSegments.join('/').replace(/&/g, '~and~');
+    
+    // Add query string if present
+    if (l.search) {
+      redirectUrl += '&' + l.search.slice(1).replace(/&/g, '~and~');
+    }
+    
+    // Add hash if present
+    if (l.hash) {
+      redirectUrl += l.hash;
+    }
+    
+    window.location.replace(redirectUrl);
+  </script>
+</head>
+<body>
+  <noscript>
+    <p>This site requires JavaScript to be enabled.</p>
+  </noscript>
+</body>
+</html>
