@@ -89,6 +89,7 @@ const AdminRoutes = () => {
   return (
     <Routes>
       <Route path="login" element={<AdminLogin />} />
+      {/* All admin routes (including root /admin) */}
       <Route
         path="*"
         element={
@@ -131,21 +132,21 @@ const App = () => {
           <AdminAuthProvider>
           <Routes>
             {/* Admin Routes - Must be BEFORE public routes to prevent catch-all from matching */}
-            <Route path="/admin/*" element={<AdminRoutes />} />
+            <Route path="admin/*" element={<AdminRoutes />} />
             
             {/* Public Portfolio Routes with Maintenance Mode Check */}
             <Route
-              path="/*"
+              path="*"
               element={
                 <MaintenanceWrapper>
                   <Layout>
                     <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/projects" element={<Projects />} />
-                      <Route path="/blog" element={<Blog />} />
-                      <Route path="/blog/:id" element={<BlogPost />} />
-                      <Route path="/contact" element={<Contact />} />
+                      <Route index element={<Home />} />
+                      <Route path="about" element={<About />} />
+                      <Route path="projects" element={<Projects />} />
+                      <Route path="blog" element={<Blog />} />
+                      <Route path="blog/:id" element={<BlogPost />} />
+                      <Route path="contact" element={<Contact />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Layout>
