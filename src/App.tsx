@@ -88,9 +88,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const AdminRoutes = () => {
   return (
     <Routes>
-      <Route path="/login" element={<AdminLogin />} />
+      <Route path="login" element={<AdminLogin />} />
       <Route
-        path="/*"
+        path="*"
         element={
           <ProtectedRoute>
             <AdminLayout />
@@ -130,6 +130,9 @@ const App = () => {
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <AdminAuthProvider>
           <Routes>
+            {/* Admin Routes - Must be BEFORE public routes to prevent catch-all from matching */}
+            <Route path="/admin/*" element={<AdminRoutes />} />
+            
             {/* Public Portfolio Routes with Maintenance Mode Check */}
             <Route
               path="/*"
@@ -149,9 +152,6 @@ const App = () => {
                 </MaintenanceWrapper>
               }
             />
-            
-            {/* Admin Routes - Always Accessible */}
-            <Route path="/admin/*" element={<AdminRoutes />} />
             </Routes>
           </AdminAuthProvider>
         </BrowserRouter>
