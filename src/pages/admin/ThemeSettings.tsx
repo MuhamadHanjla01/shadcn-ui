@@ -9,15 +9,18 @@ import {
   Palette,
   Type,
   Moon,
-  Sun
+  Sun,
+  Download,
+  Info
 } from 'lucide-react';
-import { loadThemeSettings, saveThemeSettings, ThemeSettings, loadSiteSettings, saveSiteSettings, SiteSettings } from '@/lib/storage';
+import { loadThemeSettingsSync, saveThemeSettings, exportThemeSettings, ThemeSettings, loadSiteSettings, saveSiteSettings, SiteSettings } from '@/lib/storage';
 
 const ThemeSettingsPage = () => {
-  const [settings, setSettings] = useState<ThemeSettings>(loadThemeSettings());
+  const [settings, setSettings] = useState<ThemeSettings>(loadThemeSettingsSync());
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(loadSiteSettings());
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [showInstructions, setShowInstructions] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -34,6 +37,10 @@ const ThemeSettingsPage = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleExport = () => {
+    exportThemeSettings(settings);
   };
 
   const handleLogoUpload = async (file: File) => {
@@ -73,30 +80,65 @@ const ThemeSettingsPage = () => {
             Customize the look and feel of your portfolio
           </p>
         </div>
-        <Button 
-          onClick={handleSave}
-          disabled={isSaving}
-          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-        >
-          {isSaving ? (
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              <span>Saving...</span>
-            </div>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save Settings
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowInstructions(!showInstructions)}
+            className="hidden sm:flex"
+          >
+            <Info className="h-4 w-4 mr-2" />
+            GitHub Pages
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExport}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export theme.json
+          </Button>
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          >
+            {isSaving ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Saving...</span>
+              </div>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Settings
+              </>
+            )}
+          </Button>
+        </div>
       </div>
+
+      {showInstructions && (
+        <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800 dark:text-blue-200">
+            <div className="space-y-2">
+              <p className="font-semibold">To apply theme on GitHub Pages:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Click "Export theme.json" button to download the theme file</li>
+                <li>Upload the file to your repository at <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">public/theme.json</code></li>
+                <li>Commit and push the changes to your repository</li>
+                <li>GitHub Pages will rebuild and all users will see the new theme</li>
+              </ol>
+              <p className="text-sm mt-2">Note: Local preview uses localStorage. The exported theme.json will be used on GitHub Pages.</p>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {saveStatus === 'success' && (
         <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
           <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800 dark:text-green-200">
-            Theme settings saved! Note: Full theme customization requires code changes.
+            Theme settings saved successfully! Changes will be applied immediately.
           </AlertDescription>
         </Alert>
       )}

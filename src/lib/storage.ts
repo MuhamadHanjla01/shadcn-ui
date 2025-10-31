@@ -143,13 +143,68 @@ export const saveThemeSettings = (data: ThemeSettings) => {
   saveToStorage(STORAGE_KEYS.THEME_SETTINGS, data);
 };
 
-export const loadThemeSettings = (): ThemeSettings => {
+/**
+ * Loads theme settings from public/theme.json (for GitHub Pages) or localStorage (for admin preview)
+ * This allows the theme to be shared across all users on GitHub Pages
+ */
+export const loadThemeSettings = async (): Promise<ThemeSettings> => {
+  const defaultSettings: ThemeSettings = {
+    primaryColor: '#2563eb',
+    secondaryColor: '#4f46e5',
+    fontFamily: 'system-ui',
+    darkMode: false
+  };
+
+  try {
+    // Try to load from public/theme.json first (for GitHub Pages deployment)
+    const response = await fetch('/theme.json');
+    if (response.ok) {
+      const publicTheme = await response.json();
+      // Validate and merge with defaults
+      return {
+        primaryColor: publicTheme.primaryColor || defaultSettings.primaryColor,
+        secondaryColor: publicTheme.secondaryColor || defaultSettings.secondaryColor,
+        fontFamily: publicTheme.fontFamily || defaultSettings.fontFamily,
+        darkMode: publicTheme.darkMode ?? defaultSettings.darkMode
+      };
+    }
+  } catch (error) {
+    // If theme.json doesn't exist or fetch fails, fall back to localStorage
+    console.log('theme.json not found, using localStorage fallback');
+  }
+
+  // Fall back to localStorage (for admin preview/development)
+  return loadFromStorage(STORAGE_KEYS.THEME_SETTINGS, defaultSettings);
+};
+
+/**
+ * Synchronous version for use in components that need immediate access
+ * Will use localStorage as fallback until async load completes
+ */
+export const loadThemeSettingsSync = (): ThemeSettings => {
   return loadFromStorage(STORAGE_KEYS.THEME_SETTINGS, {
     primaryColor: '#2563eb',
     secondaryColor: '#4f46e5',
     fontFamily: 'system-ui',
     darkMode: false
   });
+};
+
+/**
+ * Exports theme settings to a downloadable JSON file
+ * This file can be uploaded to public/theme.json in the GitHub repo
+ */
+export const exportThemeSettings = (settings: ThemeSettings): void => {
+  const jsonString = JSON.stringify(settings, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'theme.json';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 // Analytics

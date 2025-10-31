@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { loadSiteSettings, SiteSettings } from '@/lib/storage';
+import { loadSiteSettings, SiteSettings, loadThemeSettingsSync, ThemeSettings } from '@/lib/storage';
+import { hexToHsl } from '@/lib/theme-utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Moon, Sun, Menu, Home, User, Briefcase, PenTool, Mail } from 'lucide-react';
 import Footer from './Footer';
@@ -14,6 +15,7 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const [isDark, setIsDark] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(loadSiteSettings());
+  const [themeSettings, setThemeSettings] = useState<ThemeSettings>(loadThemeSettingsSync());
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
@@ -30,6 +32,65 @@ const Layout = ({ children }: LayoutProps) => {
     window.addEventListener('portfolioDataUpdated', onUpdate);
     return () => window.removeEventListener('portfolioDataUpdated', onUpdate);
   }, []);
+
+  // Load and listen for theme settings updates
+  useEffect(() => {
+    // Load from theme.json (for GitHub Pages) or localStorage
+    const loadTheme = async () => {
+      try {
+        const { loadThemeSettings } = await import('@/lib/storage');
+        const theme = await loadThemeSettings();
+        setThemeSettings(theme);
+      } catch (error) {
+        console.error('Error loading theme:', error);
+        setThemeSettings(loadThemeSettingsSync());
+      }
+    };
+    
+    loadTheme();
+    
+    const onThemeUpdate = (e: CustomEvent) => {
+      if (e.detail?.key === 'portfolio_theme_settings') {
+        // Reload from theme.json if it exists, otherwise use localStorage
+        loadTheme();
+      }
+    };
+    window.addEventListener('portfolioDataUpdated', onThemeUpdate as EventListener);
+    return () => window.removeEventListener('portfolioDataUpdated', onThemeUpdate as EventListener);
+  }, []);
+
+  // Apply theme settings as CSS variables
+  useEffect(() => {
+    const root = document.documentElement;
+    
+    // Apply primary and secondary colors
+    if (themeSettings.primaryColor) {
+      const primaryHsl = hexToHsl(themeSettings.primaryColor);
+      root.style.setProperty('--primary', primaryHsl);
+      
+      // Calculate a lighter version for primary-foreground (high contrast)
+      // For dark mode, use light foreground; for light mode, use dark foreground
+      const [h, s, l] = primaryHsl.split(' ').map(v => parseFloat(v));
+      const foregroundLightness = isDark ? Math.min(98, l + 50) : Math.max(10, l - 50);
+      root.style.setProperty('--primary-foreground', `${h} ${s}% ${foregroundLightness}%`);
+    }
+    
+    if (themeSettings.secondaryColor) {
+      const secondaryHsl = hexToHsl(themeSettings.secondaryColor);
+      root.style.setProperty('--secondary', secondaryHsl);
+      
+      // Calculate foreground for secondary
+      const [h, s, l] = secondaryHsl.split(' ').map(v => parseFloat(v));
+      const foregroundLightness = isDark ? Math.min(98, l + 50) : Math.max(10, l - 50);
+      root.style.setProperty('--secondary-foreground', `${h} ${s}% ${foregroundLightness}%`);
+    }
+    
+    // Apply font family
+    if (themeSettings.fontFamily) {
+      root.style.setProperty('--font-family', themeSettings.fontFamily);
+      document.body.style.fontFamily = themeSettings.fontFamily;
+    }
+  }, [themeSettings, isDark]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
@@ -60,13 +121,23 @@ const Layout = ({ children }: LayoutProps) => {
                   <img src={siteSettings.logo} alt="Logo" className="h-full w-full object-cover" />
                 </div>
               ) : (
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center">
+                <div 
+                  className="h-8 w-8 rounded-lg flex items-center justify-center"
+                  style={{
+                    background: `linear-gradient(to right, ${themeSettings.primaryColor || '#2563eb'}, ${themeSettings.secondaryColor || '#4f46e5'})`
+                  }}
+                >
                   <span className="text-white font-bold text-sm">
                     {(siteSettings.logoText || 'AC').slice(0, 3)}
                   </span>
                 </div>
               )}
-              <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <span 
+                className="font-bold text-xl bg-clip-text text-transparent"
+                style={{
+                  backgroundImage: `linear-gradient(to right, ${themeSettings.primaryColor || '#2563eb'}, ${themeSettings.secondaryColor || '#4f46e5'})`
+                }}
+              >
                 {siteSettings.siteName || 'Alex Chen'}
               </span>
             </Link>
@@ -81,9 +152,15 @@ const Layout = ({ children }: LayoutProps) => {
                     to={item.href}
                     className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive(item.href)
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                        ? ''
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800'
                     }`}
+                    style={isActive(item.href) ? {
+                      backgroundColor: isDark 
+                        ? `${themeSettings.primaryColor || '#2563eb'}40` 
+                        : `${themeSettings.primaryColor || '#2563eb'}20`,
+                      color: themeSettings.primaryColor || '#2563eb'
+                    } : {}}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.name}</span>
@@ -125,9 +202,15 @@ const Layout = ({ children }: LayoutProps) => {
                           onClick={() => setIsOpen(false)}
                           className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                             isActive(item.href)
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                              ? ''
                               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800'
                           }`}
+                          style={isActive(item.href) ? {
+                            backgroundColor: isDark 
+                              ? `${themeSettings.primaryColor || '#2563eb'}40` 
+                              : `${themeSettings.primaryColor || '#2563eb'}20`,
+                            color: themeSettings.primaryColor || '#2563eb'
+                          } : {}}
                         >
                           <Icon className="h-5 w-5" />
                           <span>{item.name}</span>

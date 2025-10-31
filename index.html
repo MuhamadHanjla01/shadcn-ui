@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" type="image/png">
-  <title>Loading...</title>
+  <title>Muhamad Hanjla</title>
   
   <!-- Immediately load settings from localStorage to prevent flash of old content -->
   <script>
@@ -112,6 +112,24 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Alex Chen - Full Stack Developer Portfolio" />
   <meta name="twitter:description" content="Full Stack Developer specializing in React, Node.js, and modern web technologies." />
+
+  <!-- Single Page Apps for GitHub Pages -->
+  <!-- This script checks for a redirect and restores the original URL -->
+  <script>
+    (function(l) {
+      if (l.search[1] === '/' ) {
+        var decoded = l.search.slice(1).split('&').map(function(s) { 
+          return s.replace(/~and~/g, '&')
+        }).join('?');
+        
+        // Handle base path correctly for GitHub Pages
+        var basePath = '/shadcn-ui';
+        var restoredPath = basePath + decoded;
+        
+        window.history.replaceState(null, null, restoredPath + l.hash);
+      }
+    }(window.location))
+  </script>
 
 </head>
 

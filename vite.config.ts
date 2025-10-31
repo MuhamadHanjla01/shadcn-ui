@@ -7,7 +7,7 @@ import { viteSourceLocator } from "@metagptx/vite-plugin-source-locator";
 export default defineConfig(({ mode }) => ({
   // Base path for GitHub Pages (set to '/' for root domain or custom domain)
   // For GitHub Pages: use '/repository-name/' format
-  base: process.env.VITE_BASE_PATH || '/',
+  base: process.env.VITE_BASE_PATH || '/shadcn-ui/',
   
   plugins: [
     viteSourceLocator({
