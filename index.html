@@ -7,18 +7,96 @@
   <link rel="icon" href="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" type="image/png">
   <title>Muhamad Hanjla</title>
   
-  <!-- Immediately load settings from localStorage to prevent flash of old content -->
+  <!-- Immediately load settings and user data from localStorage to update OG tags for social media scrapers -->
   <script>
     (function() {
       try {
+        // Load site settings
         const settings = localStorage.getItem('portfolio_site_settings');
-        if (settings) {
-          const parsed = JSON.parse(settings);
-          
-          // Update title immediately
-          if (parsed.metaTitle) {
-            document.title = parsed.metaTitle;
+        const parsedSettings = settings ? JSON.parse(settings) : {};
+        
+        // Load user data
+        const userData = localStorage.getItem('portfolio_user_data');
+        const parsedUser = userData ? JSON.parse(userData) : null;
+        
+        // Build dynamic meta data
+        let ogTitle, ogDescription, ogImage;
+        
+        if (parsedSettings.metaTitle) {
+          ogTitle = parsedSettings.metaTitle;
+          document.title = parsedSettings.metaTitle;
+        } else if (parsedUser) {
+          ogTitle = parsedUser.name + ' - ' + parsedUser.title;
+          document.title = ogTitle;
+        }
+        
+        if (parsedSettings.metaDescription) {
+          ogDescription = parsedSettings.metaDescription;
+        } else if (parsedUser) {
+          ogDescription = parsedUser.tagline || parsedUser.name + ' - ' + parsedUser.title + ' Portfolio';
+        }
+        
+        if (parsedSettings.ogImage) {
+          ogImage = parsedSettings.ogImage;
+        } else if (parsedUser && parsedUser.profileImage) {
+          ogImage = parsedUser.profileImage;
+          // Convert relative URLs to absolute
+          if (!ogImage.startsWith('http') && !ogImage.startsWith('data:')) {
+            ogImage = window.location.origin + (ogImage.startsWith('/') ? ogImage : '/' + ogImage);
           }
+        }
+        
+        // Update OG tags immediately (before React loads)
+        function updateMetaTag(selector, content) {
+          if (!content) return;
+          let tag = document.querySelector(selector);
+          if (tag) {
+            tag.setAttribute('content', content);
+          } else {
+            // Create if doesn't exist
+            if (selector.includes('property=')) {
+              const property = selector.match(/property="([^"]+)"/)[1];
+              tag = document.createElement('meta');
+              tag.setAttribute('property', property);
+              document.head.appendChild(tag);
+              tag.setAttribute('content', content);
+            } else if (selector.includes('name=')) {
+              const name = selector.match(/name="([^"]+)"/)[1];
+              tag = document.createElement('meta');
+              tag.setAttribute('name', name);
+              document.head.appendChild(tag);
+              tag.setAttribute('content', content);
+            }
+          }
+        }
+        
+        if (ogTitle) {
+          updateMetaTag('meta[property="og:title"]', ogTitle);
+          updateMetaTag('meta[name="twitter:title"]', ogTitle);
+        }
+        
+        if (ogDescription) {
+          updateMetaTag('meta[property="og:description"]', ogDescription);
+          updateMetaTag('meta[name="twitter:description"]', ogDescription);
+          updateMetaTag('meta[name="description"]', ogDescription);
+        }
+        
+        if (ogImage) {
+          updateMetaTag('meta[property="og:image"]', ogImage);
+          updateMetaTag('meta[name="twitter:image"]', ogImage);
+        }
+        
+        // Update OG URL
+        updateMetaTag('meta[property="og:url"]', window.location.href);
+        
+        // Update OG site name
+        if (parsedSettings.siteName || parsedUser?.name) {
+          updateMetaTag('meta[property="og:site_name"]', parsedSettings.siteName || parsedUser.name);
+        }
+        
+        // Update title if not set from settings
+        if (parsedSettings.metaTitle) {
+          document.title = parsedSettings.metaTitle;
           
           // Generate favicon from text
           function generateTextFavicon(text) {
