@@ -84,12 +84,38 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Admin Root Handler - Shows login or redirects to dashboard if authenticated
+const AdminRootHandler = () => {
+  const { auth, isLoading } = useAdminAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+  
+  // If authenticated, redirect to dashboard
+  if (auth.isAuthenticated) {
+    return <Navigate to="/admin/" replace />;
+  }
+  
+  // If not authenticated, show login page
+  return <AdminLogin />;
+};
+
 // Admin Routes Component
 const AdminRoutes = () => {
   return (
     <Routes>
+      {/* Root /admin path - always accessible, shows login */}
+      <Route index element={<AdminRootHandler />} />
+      
+      {/* /admin/login - explicit login path */}
       <Route path="login" element={<AdminLogin />} />
-      {/* All admin routes (including root /admin) */}
+      
+      {/* All protected admin routes */}
       <Route
         path="*"
         element={
