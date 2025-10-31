@@ -126,9 +126,21 @@ const MetadataManager = () => {
     // Use current user data for OG tags
     updateOgTag('og:title', ogTitle);
     updateOgTag('og:description', ogDescription);
-    updateOgTag('og:image', ogImage ? (ogImage.startsWith('http') ? ogImage : `${window.location.origin}${ogImage}`) : '');
+    
+    // Handle image URL - ensure it's absolute
+    if (ogImage) {
+      let imageUrl = ogImage;
+      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:') && !imageUrl.startsWith('/')) {
+        imageUrl = '/' + imageUrl;
+      }
+      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+        imageUrl = window.location.origin + imageUrl;
+      }
+      updateOgTag('og:image', imageUrl);
+    }
+    
     updateOgTag('og:url', window.location.href);
-    updateOgTag('og:site_name', settings.siteName || currentUser.name);
+    updateOgTag('og:site_name', settings.siteName || currentUser.name || 'Portfolio');
     updateOgTag('og:type', 'website');
 
     // Twitter Card tags - Use user data
@@ -146,7 +158,18 @@ const MetadataManager = () => {
     updateTwitterTag('twitter:card', 'summary_large_image');
     updateTwitterTag('twitter:title', ogTitle);
     updateTwitterTag('twitter:description', ogDescription);
-    updateTwitterTag('twitter:image', ogImage ? (ogImage.startsWith('http') ? ogImage : `${window.location.origin}${ogImage}`) : '');
+    
+    // Handle Twitter image URL - ensure it's absolute
+    if (ogImage) {
+      let imageUrl = ogImage;
+      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:') && !imageUrl.startsWith('/')) {
+        imageUrl = '/' + imageUrl;
+      }
+      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+        imageUrl = window.location.origin + imageUrl;
+      }
+      updateTwitterTag('twitter:image', imageUrl);
+    }
     if (settings.twitterHandle) {
       updateTwitterTag('twitter:site', settings.twitterHandle);
       updateTwitterTag('twitter:creator', settings.twitterHandle);
