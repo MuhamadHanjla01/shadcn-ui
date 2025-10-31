@@ -131,10 +131,12 @@ const App = () => {
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <AdminAuthProvider>
           <Routes>
-            {/* Admin Routes - Must be BEFORE public routes to prevent catch-all from matching */}
+            {/* Admin Routes - CRITICAL: Must be BEFORE public catch-all */}
+            {/* Match /admin and /admin/* paths */}
+            <Route path="admin" element={<AdminRoutes />} />
             <Route path="admin/*" element={<AdminRoutes />} />
             
-            {/* Public Portfolio Routes with Maintenance Mode Check */}
+            {/* Public Portfolio Routes - Only matches if NOT /admin */}
             <Route
               path="*"
               element={
