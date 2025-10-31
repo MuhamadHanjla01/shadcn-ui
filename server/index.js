@@ -10,10 +10,42 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
+// CORS configuration - allow multiple origins
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'https://MuhamadHanjla01.github.io',
+  'https://muhamadhanjla01.github.io'
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    
+    // Allow if origin is in allowed list or matches GitHub Pages pattern
+    if (allowedOrigins.includes(origin) || 
+        origin.includes('github.io') ||
+        origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Handle preflight requests explicitly
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
+
 app.use(express.json());
 
 // Helper to encode content to base64
@@ -179,12 +211,20 @@ async function commitFileToGitHub(
 
 // API Routes
 
-// Health check
+// Health check - allow GET and OPTIONS
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend API is running' });
 });
 
-// Test GitHub connection
+app.options('/api/health', (req, res) => {
+  res.sendStatus(200);
+});
+
+// Test GitHub connection - allow POST and OPTIONS
+app.options('/api/github/test', (req, res) => {
+  res.sendStatus(200);
+});
+
 app.post('/api/github/test', async (req, res) => {
   try {
     const { token, owner, repo } = req.body;
@@ -264,7 +304,11 @@ app.post('/api/github/test', async (req, res) => {
   }
 });
 
-// Commit single file to GitHub
+// Commit single file to GitHub - allow POST and OPTIONS
+app.options('/api/github/commit-file', (req, res) => {
+  res.sendStatus(200);
+});
+
 app.post('/api/github/commit-file', async (req, res) => {
   try {
     const { token, owner, repo, branch, path, filePath, content, commitMessage } = req.body;
@@ -298,7 +342,11 @@ app.post('/api/github/commit-file', async (req, res) => {
   }
 });
 
-// Commit multiple files to GitHub
+// Commit multiple files to GitHub - allow POST and OPTIONS
+app.options('/api/github/commit-files', (req, res) => {
+  res.sendStatus(200);
+});
+
 app.post('/api/github/commit-files', async (req, res) => {
   try {
     const { token, owner, repo, branch, path, files, commitMessage } = req.body;
@@ -419,6 +467,14 @@ app.post('/api/github/commit-files', async (req, res) => {
       message: error.message || 'Failed to commit files to GitHub'
     });
   }
+});
+
+// 404 handler for unknown API routes
+app.all('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `API route not found: ${req.method} ${req.path}`
+  });
 });
 
 // Serve static files in production (optional)
