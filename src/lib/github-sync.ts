@@ -100,13 +100,33 @@ async function commitFileToGitHub(
 
     // Fetch the latest SHA right before committing (not cached)
     const getFileUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${fullPath}?ref=${branch}`;
-    const getResponse = await fetch(getFileUrl, {
-      headers: {
-        'Authorization': `token ${config.token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Cache-Control': 'no-cache'
+    
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    let getResponse;
+    try {
+      getResponse = await fetch(getFileUrl, {
+        headers: {
+          'Authorization': `token ${config.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Cache-Control': 'no-cache'
+        },
+        signal: controller.signal
+      });
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error('Request timeout: GitHub API took too long to respond. Please check your internet connection.');
       }
-    });
+      if (fetchError.message?.includes('Failed to fetch') || fetchError instanceof TypeError) {
+        throw new Error('Network error: Unable to connect to GitHub API. Please check your internet connection and try again.');
+      }
+      throw new Error(`GitHub API request failed: ${fetchError.message || 'Unknown error'}`);
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     let sha: string | undefined;
     if (getResponse.ok) {
@@ -116,35 +136,79 @@ async function commitFileToGitHub(
 
     // Commit the file
     const putUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${fullPath}`;
-    const putResponse = await fetch(putUrl, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${config.token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: commitMessage,
-        content: contentBase64,
-        branch: branch,
-        ...(sha && { sha })
-      })
-    });
+    
+    // Create AbortController for timeout
+    const putController = new AbortController();
+    const putTimeoutId = setTimeout(() => putController.abort(), 30000); // 30 second timeout
+    
+    let putResponse;
+    try {
+      putResponse = await fetch(putUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${config.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: commitMessage,
+          content: contentBase64,
+          branch: branch,
+          ...(sha && { sha })
+        }),
+        signal: putController.signal
+      });
+    } catch (fetchError: any) {
+      clearTimeout(putTimeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error('Request timeout: GitHub API took too long to respond. Please check your internet connection.');
+      }
+      if (fetchError.message?.includes('Failed to fetch') || fetchError instanceof TypeError) {
+        throw new Error('Network error: Unable to connect to GitHub API. Please check your internet connection and try again.');
+      }
+      throw new Error(`GitHub API request failed: ${fetchError.message || 'Unknown error'}`);
+    } finally {
+      clearTimeout(putTimeoutId);
+    }
 
     if (!putResponse.ok) {
-      const error = await putResponse.json();
-      
-      // Handle SHA mismatch error with retry
-      if (error.message && error.message.includes('does not match') && retryCount < MAX_RETRIES) {
-        console.log(`SHA mismatch for ${filePath}, retrying... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
-        // Retry with fresh SHA fetch
-        return commitFileToGitHub(config, filePath, content, commitMessage, retryCount + 1);
+      let errorMessage = 'Failed to commit file';
+      try {
+        const error = await putResponse.json();
+        errorMessage = error.message || errorMessage;
+        
+        // Handle specific GitHub API errors
+        if (error.message?.includes('does not match')) {
+          // Handle SHA mismatch error with retry
+          if (retryCount < MAX_RETRIES) {
+            console.log(`SHA mismatch for ${filePath}, retrying... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
+            return commitFileToGitHub(config, filePath, content, commitMessage, retryCount + 1);
+          }
+          throw new Error('File was modified. Please try again.');
+        }
+        
+        if (error.message?.includes('Bad credentials') || putResponse.status === 401) {
+          throw new Error('Invalid GitHub token. Please check your token in Settings → General → GitHub Auto-Sync.');
+        }
+        
+        if (putResponse.status === 403) {
+          throw new Error('GitHub API rate limit exceeded or insufficient permissions. Please try again later.');
+        }
+        
+        if (putResponse.status === 404) {
+          throw new Error('Repository or file path not found. Please check your GitHub configuration.');
+        }
+        
+        console.error('GitHub API error:', error);
+        throw new Error(errorMessage);
+      } catch (jsonError: any) {
+        // If JSON parsing fails, use status text
+        if (jsonError instanceof SyntaxError) {
+          throw new Error(`GitHub API returned error: ${putResponse.status} ${putResponse.statusText}`);
+        }
+        throw jsonError;
       }
-      
-      console.error('GitHub API error:', error);
-      throw new Error(error.message || 'Failed to commit file');
     }
 
     return true;
