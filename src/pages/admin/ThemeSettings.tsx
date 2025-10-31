@@ -14,6 +14,7 @@ import {
   Info
 } from 'lucide-react';
 import { loadThemeSettingsSync, saveThemeSettings, exportThemeSettings, ThemeSettings, loadSiteSettings, saveSiteSettings, SiteSettings } from '@/lib/storage';
+import { toast } from 'sonner';
 
 const ThemeSettingsPage = () => {
   const [settings, setSettings] = useState<ThemeSettings>(loadThemeSettingsSync());
@@ -29,11 +30,51 @@ const ThemeSettingsPage = () => {
     try {
       saveThemeSettings(settings);
       saveSiteSettings(siteSettings);
+      
+      // Auto-commit to GitHub if enabled
+      const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
+      if (isGitHubSyncConfigured()) {
+        try {
+          // Load all data to sync site-settings
+          const { loadUserData } = await import('@/lib/storage');
+          const { userData: defaultUserData } = await import('@/lib/data');
+          const userData = loadUserData(defaultUserData);
+          
+          const result = await exportAndCommitToGitHub(
+            {
+              'site-settings': siteSettings,
+              'user': userData // Include user data to maintain consistency
+            },
+            'Update theme and site settings (automatic sync)'
+          );
+          
+          if (result.success) {
+            toast.success('Changes saved and published!', {
+              description: 'Users will see updates in 1-2 minutes'
+            });
+          } else {
+            toast.warning('Saved locally, but GitHub sync failed', {
+              description: result.message
+            });
+          }
+        } catch (error: any) {
+          console.error('GitHub sync error:', error);
+          toast.error('Failed to publish to GitHub', {
+            description: error.message || 'Unknown error'
+          });
+        }
+      } else {
+        toast.success('Saved locally!', {
+          description: 'Enable GitHub Auto-Sync to publish changes'
+        });
+      }
+      
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Error saving theme settings:', error);
       setSaveStatus('error');
+      toast.error('Failed to save theme settings');
     } finally {
       setIsSaving(false);
     }
