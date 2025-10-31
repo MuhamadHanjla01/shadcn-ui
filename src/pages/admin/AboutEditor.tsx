@@ -43,10 +43,33 @@ const AboutEditor = () => {
 
     try {
       const userData = JSON.parse(localStorage.getItem('portfolio_user_data') || '{}');
-      saveUserData({ ...userData, bio });
+      const updatedUserData = { ...userData, bio };
+      saveUserData(updatedUserData);
       saveSkills(skills);
       saveExperiences(experiences);
       saveAchievements(achievements);
+      
+      // Auto-commit to GitHub if enabled
+      const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
+      if (isGitHubSyncConfigured()) {
+        try {
+          const result = await exportAndCommitToGitHub(
+            {
+              'user': updatedUserData,
+              'skills': skills,
+              'experiences': experiences,
+              'achievements': achievements
+            },
+            'Update about page data (automatic sync)'
+          );
+          
+          if (!result.success) {
+            console.warn('GitHub sync failed:', result.message);
+          }
+        } catch (error) {
+          console.error('GitHub sync error:', error);
+        }
+      }
       
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);

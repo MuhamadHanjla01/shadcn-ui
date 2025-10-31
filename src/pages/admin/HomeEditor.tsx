@@ -166,11 +166,35 @@ const HomeEditor = () => {
 
       // Persist hero layout in site settings
       const currentSettings = loadSiteSettings();
-      saveSiteSettings({
+      const updatedSettings = {
         ...currentSettings,
         heroLayout: homeData.heroLayout,
         socialVisibility: { ...homeData.socialVisibility }
-      });
+      };
+      saveSiteSettings(updatedSettings);
+      
+      // Auto-commit to GitHub if enabled
+      const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
+      if (isGitHubSyncConfigured()) {
+        try {
+          const result = await exportAndCommitToGitHub(
+            {
+              'user': dataToSave,
+              'stats': stats,
+              'site-settings': updatedSettings
+            },
+            'Update home data (automatic sync)'
+          );
+          
+          if (result.success) {
+            // Success - data will be published automatically
+          } else {
+            console.warn('GitHub sync failed:', result.message);
+          }
+        } catch (error) {
+          console.error('GitHub sync error:', error);
+        }
+      }
       
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('portfolioDataUpdated'));

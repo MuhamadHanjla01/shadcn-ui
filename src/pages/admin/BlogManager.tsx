@@ -35,6 +35,24 @@ const BlogManager = () => {
 
     try {
       saveBlogPosts(blogPosts);
+      
+      // Auto-commit to GitHub if enabled
+      const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
+      if (isGitHubSyncConfigured()) {
+        try {
+          const result = await exportAndCommitToGitHub(
+            { 'blog-posts': blogPosts },
+            'Update blog posts (automatic sync)'
+          );
+          
+          if (!result.success) {
+            console.warn('GitHub sync failed:', result.message);
+          }
+        } catch (error) {
+          console.error('GitHub sync error:', error);
+        }
+      }
+      
       setSaveStatus('success');
       
       // Add success notification

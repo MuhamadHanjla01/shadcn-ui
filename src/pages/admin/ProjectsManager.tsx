@@ -37,6 +37,24 @@ const ProjectsManager = () => {
 
     try {
       saveProjects(projects);
+      
+      // Auto-commit to GitHub if enabled
+      const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
+      if (isGitHubSyncConfigured()) {
+        try {
+          const result = await exportAndCommitToGitHub(
+            { 'projects': projects },
+            'Update projects (automatic sync)'
+          );
+          
+          if (!result.success) {
+            console.warn('GitHub sync failed:', result.message);
+          }
+        } catch (error) {
+          console.error('GitHub sync error:', error);
+        }
+      }
+      
       setSaveStatus('success');
       
       // Add success notification
