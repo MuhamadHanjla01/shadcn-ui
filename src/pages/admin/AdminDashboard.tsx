@@ -12,13 +12,30 @@ import {
   Clock,
   Star,
   ArrowUpRight,
-  MoreHorizontal
+  MoreHorizontal,
+  Upload,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { dashboardService } from '@/lib/dashboard-service';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { DashboardStats, ContactMessage } from '@/types/admin';
 import { useNavigate } from 'react-router-dom';
 import { notificationService } from '@/lib/notification-service';
+import { 
+  loadUserData, 
+  loadSkills, 
+  loadExperiences, 
+  loadAchievements, 
+  loadProjects, 
+  loadBlogPosts, 
+  loadStats, 
+  loadSiteSettings,
+  defaultData 
+} from '@/lib/storage';
+import { exportAndCommitToGitHub, isGitHubSyncConfigured } from '@/lib/github-sync';
+import { exportAllData } from '@/lib/data-sync';
+import { toast } from 'sonner';
 
 const AdminDashboard = () => {
   const { auth } = useAdminAuth();
@@ -170,6 +187,66 @@ const AdminDashboard = () => {
     }
   };
 
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const handlePublishAllData = async () => {
+    if (!isGitHubSyncConfigured()) {
+      toast.error('GitHub Auto-Sync not configured', {
+        description: 'Please set up GitHub Auto-Sync in Settings → General first'
+      });
+      navigate('/admin/settings');
+      return;
+    }
+
+    setIsPublishing(true);
+    
+    try {
+      // Load all current data from localStorage
+      const { defaultData } = await import('@/lib/data');
+      const userData = loadUserData(defaultData.userData);
+      const skills = loadSkills(defaultData.skills);
+      const experiences = loadExperiences(defaultData.experiences);
+      const achievements = loadAchievements(defaultData.achievements);
+      const projects = loadProjects(defaultData.projects);
+      const blogPosts = loadBlogPosts(defaultData.blogPosts);
+      const stats = loadStats(defaultData.stats);
+      const siteSettings = loadSiteSettings();
+
+      // Publish all data
+      const result = await exportAndCommitToGitHub(
+        {
+          'user': userData,
+          'skills': skills,
+          'experiences': experiences,
+          'achievements': achievements,
+          'projects': projects,
+          'blog-posts': blogPosts,
+          'stats': stats,
+          'site-settings': siteSettings
+        },
+        'Publish all portfolio data - Initial sync'
+      );
+
+      if (result.success) {
+        toast.success('All data published successfully! 🎉', {
+          description: 'Users will see all your updates in 1-2 minutes',
+          duration: 5000
+        });
+      } else {
+        toast.error('Failed to publish data', {
+          description: result.message
+        });
+      }
+    } catch (error: any) {
+      console.error('Publish error:', error);
+      toast.error('Failed to publish data', {
+        description: error.message || 'Unknown error'
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-8">
       {/* Welcome Section */}
@@ -196,6 +273,52 @@ const AdminDashboard = () => {
           </Button>
         </div>
       </div>
+
+      {/* Publish All Data Alert */}
+      {isGitHubSyncConfigured() ? (
+        <Card className="border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-900/10">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white">GitHub Auto-Sync Active</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Changes are auto-published. Click below to publish all current data now.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={handlePublishAllData}
+              disabled={isPublishing}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              {isPublishing ? 'Publishing...' : 'Publish All Data'}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-yellow-200 dark:border-yellow-900 bg-yellow-50/50 dark:bg-yellow-900/10">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white">GitHub Auto-Sync Not Configured</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Enable Auto-Sync to automatically publish changes. Users won't see updates until data is published.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => navigate('/admin/settings')}
+              variant="outline"
+              className="border-yellow-600 text-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/20"
+            >
+              Set Up Auto-Sync
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
