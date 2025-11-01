@@ -134,12 +134,24 @@ const Home = () => {
             setDisplayText('');
             setCurrentIndex(0);
             
-            // Try again if data seems unchanged (might need more time for GitHub Actions)
-            if (attempt < maxAttempts && freshUserData.name === userData.name) {
-              console.log(`⏳ Data unchanged, retrying in 5 seconds... (${attempt}/${maxAttempts})`);
-              setTimeout(() => attemptReload(attempt + 1, maxAttempts), 5000);
+            // Check if data actually changed by comparing with current state
+            const dataChanged = 
+              freshUserData.name !== userData.name || 
+              freshUserData.title !== userData.title ||
+              JSON.stringify(freshStats) !== JSON.stringify(stats);
+            
+            if (dataChanged) {
+              console.log('✅ Data changed detected! Frontend updated with new data.');
+            } else if (attempt < maxAttempts) {
+              console.log(`⏳ Data unchanged, retrying in 10 seconds... (${attempt}/${maxAttempts})`);
+              console.log('💡 This is normal - GitHub Actions takes 1-2 minutes to rebuild and deploy');
+              setTimeout(() => attemptReload(attempt + 1, maxAttempts), 10000); // 10 seconds between retries
             } else {
-              console.log('✅ Data reload complete');
+              console.log('⚠️ Max retries reached. Data might not have updated yet.');
+              console.log('💡 This usually means:');
+              console.log('   1. GitHub Actions is still building (check GitHub Actions tab)');
+              console.log('   2. JSON files haven\'t been deployed yet');
+              console.log('   3. Try manual refresh: Ctrl+Shift+R');
             }
           };
           
