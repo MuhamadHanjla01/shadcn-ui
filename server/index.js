@@ -46,7 +46,10 @@ app.options('*', (req, res) => {
   res.sendStatus(200);
 });
 
-app.use(express.json());
+// Increase JSON payload limit to handle large base64-encoded images (50MB)
+// This is needed for profile images, resume PDFs, etc.
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Middleware to normalize double slashes in URLs (fix for //api/... issues)
 app.use((req, res, next) => {
