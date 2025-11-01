@@ -48,6 +48,16 @@ app.options('*', (req, res) => {
 
 app.use(express.json());
 
+// Middleware to normalize double slashes in URLs (fix for //api/... issues)
+app.use((req, res, next) => {
+  // Replace multiple consecutive slashes with single slash
+  if (req.path.includes('//')) {
+    req.url = req.url.replace(/\/+/g, '/');
+    req.path = req.path.replace(/\/+/g, '/');
+  }
+  next();
+});
+
 // Helper to encode content to base64
 function btoa(str) {
   return Buffer.from(str).toString('base64');
