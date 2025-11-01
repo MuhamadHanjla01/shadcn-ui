@@ -8,6 +8,7 @@ import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { loadUserData, loadSiteSettings, loadStats } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 import { startRealtimeSync, initializeDataHash } from '@/lib/realtime-sync';
+import { getDataFromBackend } from '@/lib/backend-api';
 
 const Home = () => {
   const [userData, setUserData] = useState(initialUserData);

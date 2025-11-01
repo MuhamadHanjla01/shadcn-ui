@@ -191,31 +191,27 @@ export function startRealtimeSync(callback: (updates: {
 /**
  * Quick check for specific data types (used by individual pages)
  */
-export async function checkForUpdates(dataType: 'projects' | 'blogPosts' | 'skills' | 'experiences' | 'achievements') {
-  const fileMap = {
-    projects: DATA_FILES.projects,
-    blogPosts: DATA_FILES.blogPosts,
-    skills: DATA_FILES.skills,
-    experiences: DATA_FILES.experiences,
-    achievements: DATA_FILES.achievements
-  };
-
-  const keyMap = {
-    projects: 'portfolio_projects',
-    blogPosts: 'portfolio_blog_posts',
-    skills: 'portfolio_skills',
-    experiences: 'portfolio_experiences',
-    achievements: 'portfolio_achievements'
+export async function checkForUpdates(dataType: 'projects' | 'blogPosts' | 'skills' | 'experiences' | 'achievements' | 'user') {
+  // Map frontend names to backend API names
+  const backendTypeMap: Record<string, string> = {
+    'projects': 'projects',
+    'blogPosts': 'blog-posts',
+    'skills': 'skills',
+    'experiences': 'experiences',
+    'achievements': 'achievements',
+    'user': 'user'
   };
 
   try {
+    const backendType = backendTypeMap[dataType] || dataType;
+    
     // Use backend API for direct, fast updates
-    const freshData = await getDataFromBackend(dataType);
+    const freshData = await getDataFromBackend(backendType as any);
 
     // Always check if we've polled before - if not, this is initialization
     const hasPolled = hasInitialPolled.get(dataType) || false;
     if (freshData && hasDataChanged(dataType, freshData, !hasPolled)) {
-      console.log(`🔄 ${dataType} updated`);
+      console.log(`🔄 ${dataType} updated from backend`);
       return freshData;
     }
 
