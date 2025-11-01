@@ -275,7 +275,15 @@ app.post('/api/github/test', async (req, res) => {
   // Add CORS headers explicitly
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Credentials', 'true');
+  
   try {
+    // Log request for debugging
+    console.log('GitHub test request received:', { 
+      owner: req.body?.owner, 
+      repo: req.body?.repo,
+      hasToken: !!req.body?.token 
+    });
+    
     const { token, owner, repo } = req.body;
     
     if (!token || !owner || !repo) {
@@ -346,9 +354,22 @@ app.post('/api/github/test', async (req, res) => {
       clearTimeout(timeoutId);
     }
   } catch (error) {
+    // Log the full error for debugging
+    console.error('GitHub test endpoint error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request body:', req.body);
+    
+    // Return detailed error message
+    const errorMessage = error.message || 'Internal server error';
+    const errorDetails = process.env.NODE_ENV === 'production' 
+      ? 'Check Railway logs for details'
+      : error.stack;
+    
     res.status(500).json({
       success: false,
-      message: error.message || 'Internal server error'
+      message: `Connection test failed: ${errorMessage}`,
+      error: errorDetails,
+      hint: 'Make sure your GitHub token has "repo" permissions'
     });
   }
 });
