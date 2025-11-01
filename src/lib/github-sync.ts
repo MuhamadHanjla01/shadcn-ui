@@ -24,9 +24,9 @@ function getApiBaseUrl(): string {
     return import.meta.env.VITE_API_URL || 'http://localhost:3001';
   }
   // In production, use environment variable or fallback to Railway URL
-  // TODO: Replace with your Railway backend URL after deployment
   // Get this from Railway dashboard → Settings → Domains
-  return import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app/';
+  // Note: No trailing slash - API endpoints will be appended
+  return import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app';
 }
 
 /**
