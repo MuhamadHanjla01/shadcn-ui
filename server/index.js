@@ -211,6 +211,21 @@ async function commitFileToGitHub(
 
 // API Routes
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Portfolio Backend API is running',
+    endpoints: {
+      health: '/api/health',
+      githubTest: '/api/github/test',
+      githubCommitFile: '/api/github/commit-file',
+      githubCommitFiles: '/api/github/commit-files'
+    },
+    documentation: 'This is the backend API for GitHub sync functionality'
+  });
+});
+
 // Health check - allow GET and OPTIONS
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend API is running' });
@@ -477,14 +492,8 @@ app.all('/api/*', (req, res) => {
   });
 });
 
-// Serve static files in production (optional)
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(join(__dirname, '../dist')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(join(__dirname, '../dist/index.html'));
-  });
-}
+// Note: Static file serving removed - Railway only deploys the backend API
+// Frontend is hosted separately on GitHub Pages
 
 app.listen(PORT, () => {
   console.log(`🚀 Backend API server running on http://localhost:${PORT}`);
