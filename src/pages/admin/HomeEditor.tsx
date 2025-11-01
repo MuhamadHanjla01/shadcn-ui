@@ -193,6 +193,12 @@ const HomeEditor = () => {
             toast.success('Changes saved and published!', {
               description: 'Users will see updates in 1-2 minutes'
             });
+            // Trigger a reload from JSON files after a delay to pick up GitHub changes
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { 
+                detail: { source: 'github-sync', reload: true } 
+              }));
+            }, 3000); // Wait 3 seconds for GitHub to process the commit
           } else {
             // Only log to console for backend connectivity issues - don't show alarming toast
             console.warn('GitHub sync note:', result.message);

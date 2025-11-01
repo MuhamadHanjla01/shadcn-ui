@@ -85,10 +85,47 @@ const Home = () => {
     loadData();
 
     // Listen for updates from admin panel
-    const handleDataUpdate = () => {
-      loadData();
-      setDisplayText('');
-      setCurrentIndex(0);
+    const handleDataUpdate = (event?: any) => {
+      // If event indicates GitHub sync completed, force refresh from JSON files
+      const shouldForceReload = event?.detail?.reload === true;
+      
+      // Reload data - force refresh from JSON if GitHub sync completed
+      if (shouldForceReload) {
+        // Wait a bit for GitHub to process the commit
+        setTimeout(async () => {
+          const freshUserData = await loadDataFromFile(
+            DATA_FILES.user,
+            'portfolio_user_data',
+            initialUserData,
+            true // Force refresh
+          );
+          const freshStats = await loadDataFromFile(
+            DATA_FILES.stats,
+            'portfolio_stats',
+            initialStats,
+            true // Force refresh
+          );
+          setUserData(freshUserData);
+          setStats(freshStats);
+          
+          const freshSettings = await loadDataFromFile(
+            DATA_FILES.siteSettings,
+            'portfolio_site_settings',
+            loadSiteSettings(),
+            true
+          );
+          setHeroLayout((freshSettings.heroLayout as 'left'|'center'|'right') || 'center');
+          setSocialVisibility(freshSettings.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+          
+          setDisplayText('');
+          setCurrentIndex(0);
+        }, 2000); // Wait 2 seconds for GitHub to serve new files
+      } else {
+        // Normal reload from localStorage or JSON
+        loadData();
+        setDisplayText('');
+        setCurrentIndex(0);
+      }
     };
 
     window.addEventListener('portfolioDataUpdated', handleDataUpdate);

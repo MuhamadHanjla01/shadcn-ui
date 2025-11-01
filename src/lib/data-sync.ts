@@ -41,23 +41,31 @@ export const DATA_FILES = {
 export async function loadDataFromFile<T>(
   filePath: string,
   localStorageKey: string,
-  defaultValue: T
+  defaultValue: T,
+  forceRefresh: boolean = false
 ): Promise<T> {
   try {
     // Try to fetch from JSON file first (for public users)
-    // Use timestamp-based cache busting
+    // Use timestamp-based cache busting with additional force parameter if needed
     const timestamp = Date.now();
-    const urlWithCache = filePath.includes('?') 
-      ? `${filePath}&t=${timestamp}` 
-      : `${filePath}?t=${timestamp}`;
+    const random = Math.random().toString(36).substring(7); // Extra cache busting
+    let urlWithCache = filePath.includes('?') 
+      ? `${filePath}&t=${timestamp}&r=${random}` 
+      : `${filePath}?t=${timestamp}&r=${random}`;
+    
+    // If force refresh is requested, add force parameter
+    if (forceRefresh || filePath.includes('force=')) {
+      urlWithCache = `${urlWithCache}&_=${Date.now()}`;
+    }
     
     const response = await fetch(urlWithCache, {
       method: 'GET',
-      cache: 'no-store', // Prevent any caching
+      cache: forceRefresh ? 'reload' : 'no-store', // Force reload if needed
       headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        'Cache-Control': forceRefresh ? 'no-cache, no-store, must-revalidate, max-age=0, must-revalidate' : 'no-cache, no-store, must-revalidate, max-age=0',
         'Pragma': 'no-cache',
-        'Expires': '0'
+        'Expires': '0',
+        ...(forceRefresh && { 'X-Force-Refresh': 'true' })
       }
     });
 
