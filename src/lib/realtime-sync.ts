@@ -15,25 +15,47 @@ const POLL_INTERVAL = 30000;
 const lastDataVersions: Map<string, string> = new Map();
 
 /**
- * Gets a hash/version of data for change detection
+ * Gets a hash of data for change detection (without timestamps)
  */
-function getDataVersion(data: any): string {
-  return JSON.stringify(data).substring(0, 100) + '...' + Date.now().toString().slice(-6);
+function getDataHash(data: any): string {
+  // Use a simple hash of the stringified data
+  const str = JSON.stringify(data);
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return hash.toString();
 }
 
 /**
- * Checks if data has changed by comparing versions
+ * Checks if data has changed by comparing hashes
  */
 function hasDataChanged(key: string, currentData: any): boolean {
-  const currentVersion = getDataVersion(currentData);
-  const lastVersion = lastDataVersions.get(key);
+  if (!currentData) return false;
   
-  if (!lastVersion || lastVersion !== currentVersion) {
-    lastDataVersions.set(key, currentVersion);
-    return lastVersion !== undefined; // true if changed (not first load)
+  const currentHash = getDataHash(currentData);
+  const lastHash = lastDataVersions.get(key);
+  
+  if (lastHash === undefined) {
+    // First load - store hash but don't trigger update
+    lastDataVersions.set(key, currentHash);
+    return false;
   }
   
-  return false;
+  if (lastHash !== currentHash) {
+    // Data changed - update hash and return true
+    lastDataVersions.set(key, currentHash);
+    console.log(`📊 Data changed detected for ${key}:`, {
+      oldHash: lastHash,
+      newHash: currentHash,
+      dataPreview: typeof currentData === 'object' ? Object.keys(currentData).slice(0, 3) : 'N/A'
+    });
+    return true;
+  }
+  
+  return false; // No change
 }
 
 /**
@@ -60,26 +82,28 @@ export function startRealtimeSync(callback: (updates: {
 
   const pollForUpdates = async () => {
     try {
-      // Check if user data changed
+      console.log('🔍 Polling for updates...', new Date().toLocaleTimeString());
+      
+      // Force refresh to bypass cache and get latest data from server
       const freshUserData = await loadDataFromFile(
         DATA_FILES.user,
         'portfolio_user_data',
         null,
-        false // Don't force refresh to avoid unnecessary network calls
+        true // Force refresh to get latest from server
       );
       
       const freshStats = await loadDataFromFile(
         DATA_FILES.stats,
         'portfolio_stats',
         null,
-        false
+        true // Force refresh
       );
       
       const freshSiteSettings = await loadDataFromFile(
         DATA_FILES.siteSettings,
         'portfolio_site_settings',
         null,
-        false
+        true // Force refresh
       );
 
       // Check for changes
@@ -151,7 +175,7 @@ export async function checkForUpdates(dataType: 'projects' | 'blogPosts' | 'skil
       fileMap[dataType],
       keyMap[dataType],
       null,
-      false
+      true // Force refresh to get latest from server
     );
 
     if (freshData && hasDataChanged(dataType, freshData)) {

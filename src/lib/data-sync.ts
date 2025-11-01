@@ -71,6 +71,7 @@ export async function loadDataFromFile<T>(
 
     if (response.ok) {
       const data = await response.json();
+      // Always return the fetched JSON data (for comparison in real-time sync)
       // Only update localStorage if data wasn't recently saved locally
       // This prevents overwriting fresh admin edits with potentially stale JSON data
       if (typeof window !== 'undefined') {
@@ -87,22 +88,13 @@ export async function loadDataFromFile<T>(
             dataPreview: typeof data === 'object' ? Object.keys(data).slice(0, 5) : 'N/A'
           });
         } else {
-          // Data was recently saved - don't overwrite, use localStorage instead
-          console.log(`📝 Skipping JSON update for ${filePath} - localStorage has recent saves`, {
-            timestamp: new Date().toISOString()
+          // Data was recently saved - keep localStorage but still return JSON data for comparison
+          // This allows real-time sync to detect changes even if localStorage has recent saves
+          console.log(`📝 Loaded ${filePath} from JSON (keeping localStorage - has recent saves)`, {
+            timestamp: new Date().toISOString(),
+            forceRefresh: forceRefresh
           });
-          const stored = localStorage.getItem(localStorageKey);
-          if (stored) {
-            try {
-              return JSON.parse(stored);
-            } catch (e) {
-              // If localStorage parse fails, use JSON data
-              localStorage.setItem(localStorageKey, JSON.stringify(data));
-            }
-          } else {
-            // No localStorage but recently saved flag exists - use JSON data
-            localStorage.setItem(localStorageKey, JSON.stringify(data));
-          }
+          // Don't overwrite localStorage, but return JSON data so real-time sync can compare
         }
       }
       console.log(`✅ Loaded ${filePath} from shared JSON file`, {
