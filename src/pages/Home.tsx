@@ -105,9 +105,6 @@ const Home = () => {
       // Initialize hash for site settings
       initializeDataHash('siteSettings', ss);
       
-      // Initialize hash for site settings
-      initializeDataHash('siteSettings', ss);
-      
       // Debug: Log what data was loaded
       if (import.meta.env.DEV) {
         console.log('📥 Loaded user data:', { 
