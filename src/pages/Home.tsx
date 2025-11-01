@@ -46,17 +46,50 @@ const Home = () => {
     trackPageView('home');
 
     const loadData = async () => {
-      // Try to load from shared JSON files first, fall back to localStorage
-      const userData = await loadDataFromFile(
-        DATA_FILES.user,
-        'portfolio_user_data',
-        initialUserData
-      );
-      const stats = await loadDataFromFile(
-        DATA_FILES.stats,
-        'portfolio_stats',
-        initialStats
-      );
+      console.log('📥 Loading home data...');
+      
+      // Try to load from backend API first (direct connection - real-time!)
+      const [backendUserData, backendStats, backendSettings] = await Promise.all([
+        getDataFromBackend('user'),
+        getDataFromBackend('stats'),
+        getDataFromBackend('site-settings')
+      ]);
+      
+      // Use backend data if available, otherwise fallback to JSON files/localStorage
+      let userData, stats, ss;
+      
+      if (backendUserData) {
+        userData = backendUserData;
+        console.log('✅ Loaded user data from backend API');
+      } else {
+        userData = await loadDataFromFile(
+          DATA_FILES.user,
+          'portfolio_user_data',
+          initialUserData
+        );
+      }
+      
+      if (backendStats) {
+        stats = backendStats;
+        console.log('✅ Loaded stats from backend API');
+      } else {
+        stats = await loadDataFromFile(
+          DATA_FILES.stats,
+          'portfolio_stats',
+          initialStats
+        );
+      }
+      
+      if (backendSettings) {
+        ss = backendSettings;
+        console.log('✅ Loaded site settings from backend API');
+      } else {
+        ss = await loadDataFromFile(
+          DATA_FILES.siteSettings,
+          'portfolio_site_settings',
+          loadSiteSettings()
+        );
+      }
       
       // Update state with loaded data
       setUserData(userData);
@@ -66,15 +99,11 @@ const Home = () => {
       initializeDataHash('user', userData);
       initializeDataHash('stats', stats);
       
-      // Load site settings (also try JSON first)
-      const ss = await loadDataFromFile(
-        DATA_FILES.siteSettings,
-        'portfolio_site_settings',
-        loadSiteSettings()
-      );
-      
       setHeroLayout((ss.heroLayout as 'left'|'center'|'right') || 'center');
       setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+      
+      // Initialize hash for site settings
+      initializeDataHash('siteSettings', ss);
       
       // Initialize hash for site settings
       initializeDataHash('siteSettings', ss);
