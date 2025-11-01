@@ -14,6 +14,9 @@ const POLL_INTERVAL = 30000;
 // Track last known data versions to detect changes
 const lastDataVersions: Map<string, string> = new Map();
 
+// Track if we've done an initial poll (to avoid false positives)
+const hasInitialPolled: Map<string, boolean> = new Map();
+
 /**
  * Gets a hash of data for change detection (without timestamps)
  */
@@ -32,15 +35,18 @@ function getDataHash(data: any): string {
 /**
  * Checks if data has changed by comparing hashes
  */
-function hasDataChanged(key: string, currentData: any): boolean {
+function hasDataChanged(key: string, currentData: any, isInitialPoll: boolean = false): boolean {
   if (!currentData) return false;
   
   const currentHash = getDataHash(currentData);
   const lastHash = lastDataVersions.get(key);
+  const hasPolled = hasInitialPolled.get(key) || false;
   
-  if (lastHash === undefined) {
-    // First load - store hash but don't trigger update
+  if (lastHash === undefined || (isInitialPoll && !hasPolled)) {
+    // First poll - store hash but don't trigger update
     lastDataVersions.set(key, currentHash);
+    hasInitialPolled.set(key, true);
+    console.log(`📋 Initial hash set for ${key}:`, currentHash.substring(0, 10) + '...');
     return false;
   }
   
@@ -48,8 +54,8 @@ function hasDataChanged(key: string, currentData: any): boolean {
     // Data changed - update hash and return true
     lastDataVersions.set(key, currentHash);
     console.log(`📊 Data changed detected for ${key}:`, {
-      oldHash: lastHash,
-      newHash: currentHash,
+      oldHash: lastHash.substring(0, 10) + '...',
+      newHash: currentHash.substring(0, 10) + '...',
       dataPreview: typeof currentData === 'object' ? Object.keys(currentData).slice(0, 3) : 'N/A'
     });
     return true;
@@ -80,7 +86,7 @@ export function startRealtimeSync(callback: (updates: {
 
   console.log('🔄 Starting real-time sync - polling every 30 seconds for updates');
 
-  const pollForUpdates = async () => {
+  const pollForUpdates = async (isInitialPoll: boolean = false) => {
     try {
       console.log('🔍 Polling for updates...', new Date().toLocaleTimeString());
       
@@ -118,8 +124,8 @@ export function startRealtimeSync(callback: (updates: {
       let hasUpdates = false;
 
       if (freshUserData) {
-        const userChanged = hasDataChanged('user', freshUserData);
-        console.log('🔍 User data check:', userChanged ? '✅ CHANGED' : '⏸️ No change');
+        const userChanged = hasDataChanged('user', freshUserData, isInitialPoll);
+        console.log('🔍 User data check:', userChanged ? '✅ CHANGED' : (isInitialPoll ? '📋 Initial load' : '⏸️ No change'));
         if (userChanged) {
           updates.user = freshUserData;
           hasUpdates = true;
@@ -131,8 +137,8 @@ export function startRealtimeSync(callback: (updates: {
       }
 
       if (freshStats) {
-        const statsChanged = hasDataChanged('stats', freshStats);
-        console.log('🔍 Stats check:', statsChanged ? '✅ CHANGED' : '⏸️ No change');
+        const statsChanged = hasDataChanged('stats', freshStats, isInitialPoll);
+        console.log('🔍 Stats check:', statsChanged ? '✅ CHANGED' : (isInitialPoll ? '📋 Initial load' : '⏸️ No change'));
         if (statsChanged) {
           updates.stats = freshStats;
           hasUpdates = true;
@@ -141,8 +147,8 @@ export function startRealtimeSync(callback: (updates: {
       }
 
       if (freshSiteSettings) {
-        const settingsChanged = hasDataChanged('siteSettings', freshSiteSettings);
-        console.log('🔍 Site settings check:', settingsChanged ? '✅ CHANGED' : '⏸️ No change');
+        const settingsChanged = hasDataChanged('siteSettings', freshSiteSettings, isInitialPoll);
+        console.log('🔍 Site settings check:', settingsChanged ? '✅ CHANGED' : (isInitialPoll ? '📋 Initial load' : '⏸️ No change'));
         if (settingsChanged) {
           updates.siteSettings = freshSiteSettings;
           hasUpdates = true;
@@ -165,12 +171,16 @@ export function startRealtimeSync(callback: (updates: {
 
   // Wait a bit before first poll to let initial page load complete
   // Then poll immediately, then set interval
-  setTimeout(() => {
+  let isFirstPoll = true;
+  const initialPoll = async () => {
     console.log('⏰ Starting initial poll after page load...');
-    pollForUpdates();
-  }, 5000); // Wait 5 seconds after page load
+    await pollForUpdates(isFirstPoll);
+    isFirstPoll = false;
+  };
   
-  const intervalId = setInterval(pollForUpdates, POLL_INTERVAL);
+  setTimeout(initialPoll, 5000); // Wait 5 seconds after page load
+  
+  const intervalId = setInterval(() => pollForUpdates(false), POLL_INTERVAL);
 
   // Return cleanup function
   return () => {
@@ -207,7 +217,9 @@ export async function checkForUpdates(dataType: 'projects' | 'blogPosts' | 'skil
       true // Force refresh to get latest from server
     );
 
-    if (freshData && hasDataChanged(dataType, freshData)) {
+    // Always check if we've polled before - if not, this is initialization
+    const hasPolled = hasInitialPolled.get(dataType) || false;
+    if (freshData && hasDataChanged(dataType, freshData, !hasPolled)) {
       console.log(`🔄 ${dataType} updated`);
       return freshData;
     }
