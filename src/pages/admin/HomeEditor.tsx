@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { saveUserData, loadUserData, loadSiteSettings, saveSiteSettings, saveStats, loadStats } from '@/lib/storage';
+import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 import type { Stat } from '@/types';
 import { toast } from 'sonner';
 
@@ -49,55 +50,134 @@ const HomeEditor = () => {
   const [resumeMeta, setResumeMeta] = useState<{ name: string; sizeLabel: string } | null>(null);
   const isInitializedRef = useRef(false);
 
-  // Load data from localStorage on mount
+  // Load data from JSON files first (with force refresh), then fallback to localStorage
+  // This ensures admin always sees the latest published data
   useEffect(() => {
-    const stored = localStorage.getItem('portfolio_user_data');
-    const storedStats = loadStats(initialStats);
-    setStats(storedStats);
-    
-    if (stored) {
+    const loadLatestData = async () => {
       try {
-        const parsedData = JSON.parse(stored);
-        setHomeData({
-          name: parsedData.name,
-          title: parsedData.title,
-          tagline: parsedData.tagline,
-          profileImage: parsedData.profileImage,
-          resume: parsedData.resume,
-          socialMedia: { ...parsedData.socialMedia },
-          socialVisibility: {
-            github: true,
-            linkedin: true,
-            twitter: true,
-            email: true
-          },
-          heroLayout: 'center'
-        });
-        // Load heroLayout from site settings if present
-        const ss = loadSiteSettings();
-        if (ss.heroLayout && ['left','center','right'].includes(ss.heroLayout)) {
-          setHomeData(prev => ({ ...prev, heroLayout: ss.heroLayout as 'left'|'center'|'right' }));
-        }
-        if (ss.socialVisibility) {
-          setHomeData(prev => ({ ...prev, socialVisibility: { ...ss.socialVisibility } }));
-        }
-        // Initialize resume meta for display after refresh
-        if (parsedData.resume) {
-          const isDataUrl = typeof parsedData.resume === 'string' && parsedData.resume.startsWith('data:');
-          const fromPath = typeof parsedData.resume === 'string' ? parsedData.resume.split('/').pop() : '';
-          setResumeMeta({
-            name: isDataUrl ? 'resume.pdf' : (fromPath || 'resume.pdf'),
-            sizeLabel: '—'
+        // Force refresh from JSON files to get latest published data
+        const [freshUserData, freshStats, freshSiteSettings] = await Promise.all([
+          loadDataFromFile(DATA_FILES.user, 'portfolio_user_data', initialUserData, true),
+          loadDataFromFile(DATA_FILES.stats, 'portfolio_stats', initialStats, true),
+          loadDataFromFile(DATA_FILES.siteSettings, 'portfolio_site_settings', loadSiteSettings(), true)
+        ]);
+
+        // Update stats
+        setStats(freshStats);
+
+        // Update home data
+        if (freshUserData) {
+          setHomeData({
+            name: freshUserData.name || initialUserData.name,
+            title: freshUserData.title || initialUserData.title,
+            tagline: freshUserData.tagline || initialUserData.tagline,
+            profileImage: freshUserData.profileImage || initialUserData.profileImage,
+            resume: freshUserData.resume || initialUserData.resume,
+            socialMedia: { ...(freshUserData.socialMedia || initialUserData.socialMedia) },
+            socialVisibility: freshSiteSettings?.socialVisibility || {
+              github: true,
+              linkedin: true,
+              twitter: true,
+              email: true
+            },
+            heroLayout: (freshSiteSettings?.heroLayout as 'left'|'center'|'right') || 'center'
           });
+
+          // Initialize resume meta for display after refresh
+          const resume = freshUserData.resume || initialUserData.resume;
+          if (resume) {
+            const isDataUrl = typeof resume === 'string' && resume.startsWith('data:');
+            const fromPath = typeof resume === 'string' ? resume.split('/').pop() : '';
+            setResumeMeta({
+              name: isDataUrl ? 'resume.pdf' : (fromPath || 'resume.pdf'),
+              sizeLabel: '—'
+            });
+          } else {
+            setResumeMeta(null);
+          }
         } else {
-          setResumeMeta(null);
+          // Fallback to localStorage if JSON files don't exist
+          const stored = localStorage.getItem('portfolio_user_data');
+          const storedStats = loadStats(initialStats);
+          setStats(storedStats);
+          
+          if (stored) {
+            try {
+              const parsedData = JSON.parse(stored);
+              setHomeData({
+                name: parsedData.name,
+                title: parsedData.title,
+                tagline: parsedData.tagline,
+                profileImage: parsedData.profileImage,
+                resume: parsedData.resume,
+                socialMedia: { ...parsedData.socialMedia },
+                socialVisibility: {
+                  github: true,
+                  linkedin: true,
+                  twitter: true,
+                  email: true
+                },
+                heroLayout: 'center'
+              });
+              // Load heroLayout from site settings if present
+              const ss = loadSiteSettings();
+              if (ss.heroLayout && ['left','center','right'].includes(ss.heroLayout)) {
+                setHomeData(prev => ({ ...prev, heroLayout: ss.heroLayout as 'left'|'center'|'right' }));
+              }
+              if (ss.socialVisibility) {
+                setHomeData(prev => ({ ...prev, socialVisibility: { ...ss.socialVisibility } }));
+              }
+              // Initialize resume meta
+              if (parsedData.resume) {
+                const isDataUrl = typeof parsedData.resume === 'string' && parsedData.resume.startsWith('data:');
+                const fromPath = typeof parsedData.resume === 'string' ? parsedData.resume.split('/').pop() : '';
+                setResumeMeta({
+                  name: isDataUrl ? 'resume.pdf' : (fromPath || 'resume.pdf'),
+                  sizeLabel: '—'
+                });
+              } else {
+                setResumeMeta(null);
+              }
+            } catch (error) {
+              console.error('Error loading stored data:', error);
+            }
+          }
         }
       } catch (error) {
-        console.error('Error loading stored data:', error);
+        console.error('Error loading latest data:', error);
+        // Fallback to localStorage on error
+        const stored = localStorage.getItem('portfolio_user_data');
+        const storedStats = loadStats(initialStats);
+        setStats(storedStats);
+        
+        if (stored) {
+          try {
+            const parsedData = JSON.parse(stored);
+            setHomeData({
+              name: parsedData.name || initialUserData.name,
+              title: parsedData.title || initialUserData.title,
+              tagline: parsedData.tagline || initialUserData.tagline,
+              profileImage: parsedData.profileImage || initialUserData.profileImage,
+              resume: parsedData.resume || initialUserData.resume,
+              socialMedia: { ...(parsedData.socialMedia || initialUserData.socialMedia) },
+              socialVisibility: {
+                github: true,
+                linkedin: true,
+                twitter: true,
+                email: true
+              },
+              heroLayout: 'center'
+            });
+          } catch (e) {
+            console.error('Error parsing stored data:', e);
+          }
+        }
       }
-    }
-    // Mark initialized so auto-save can start after initial load
-    isInitializedRef.current = true;
+      // Mark initialized so auto-save can start after initial load
+      isInitializedRef.current = true;
+    };
+
+    loadLatestData();
   }, []);
 
   // Auto-save and broadcast updates to frontend (debounced)

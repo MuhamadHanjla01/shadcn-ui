@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { blogPosts as initialBlogPosts } from '@/lib/data';
 import { saveBlogPosts } from '@/lib/storage';
+import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 import { BlogPost } from '@/types';
 import { notificationService } from '@/lib/notification-service';
 import { toast } from 'sonner';
@@ -26,8 +27,29 @@ const BlogManager = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    const stored = localStorage.getItem('portfolio_blog_posts');
-    if (stored) setBlogPosts(JSON.parse(stored));
+    // Load latest data from JSON files first (with force refresh), then fallback to localStorage
+    const loadLatestData = async () => {
+      try {
+        const freshBlogPosts = await loadDataFromFile(
+          DATA_FILES.blogPosts,
+          'portfolio_blog_posts',
+          initialBlogPosts,
+          true
+        );
+        if (freshBlogPosts) setBlogPosts(freshBlogPosts);
+      } catch (error) {
+        console.error('Error loading latest data:', error);
+        // Fallback to localStorage on error
+        const stored = localStorage.getItem('portfolio_blog_posts');
+        if (stored) {
+          try {
+            setBlogPosts(JSON.parse(stored));
+          } catch (e) {}
+        }
+      }
+    };
+
+    loadLatestData();
   }, []);
 
   const handleSave = async () => {

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { projects as initialProjects } from '@/lib/data';
 import { saveProjects } from '@/lib/storage';
+import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 import { Project } from '@/types';
 import { notificationService } from '@/lib/notification-service';
 import { toast } from 'sonner';
@@ -28,8 +29,29 @@ const ProjectsManager = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    const stored = localStorage.getItem('portfolio_projects');
-    if (stored) setProjects(JSON.parse(stored));
+    // Load latest data from JSON files first (with force refresh), then fallback to localStorage
+    const loadLatestData = async () => {
+      try {
+        const freshProjects = await loadDataFromFile(
+          DATA_FILES.projects,
+          'portfolio_projects',
+          initialProjects,
+          true
+        );
+        if (freshProjects) setProjects(freshProjects);
+      } catch (error) {
+        console.error('Error loading latest data:', error);
+        // Fallback to localStorage on error
+        const stored = localStorage.getItem('portfolio_projects');
+        if (stored) {
+          try {
+            setProjects(JSON.parse(stored));
+          } catch (e) {}
+        }
+      }
+    };
+
+    loadLatestData();
   }, []);
 
   const handleSave = async () => {

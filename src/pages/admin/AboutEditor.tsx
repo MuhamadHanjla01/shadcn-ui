@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { userData as initialUserData, skills as initialSkills, experiences as initialExperiences, achievements as initialAchievements } from '@/lib/data';
 import { saveUserData, saveSkills, saveExperiences, saveAchievements } from '@/lib/storage';
+import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 import { Skill, Experience, Achievement } from '@/types';
 import { toast } from 'sonner';
 
@@ -27,15 +28,52 @@ const AboutEditor = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    const storedUserData = localStorage.getItem('portfolio_user_data');
-    const storedSkills = localStorage.getItem('portfolio_skills');
-    const storedExperiences = localStorage.getItem('portfolio_experiences');
-    const storedAchievements = localStorage.getItem('portfolio_achievements');
+    // Load latest data from JSON files first (with force refresh), then fallback to localStorage
+    const loadLatestData = async () => {
+      try {
+        const [freshUserData, freshSkills, freshExperiences, freshAchievements] = await Promise.all([
+          loadDataFromFile(DATA_FILES.user, 'portfolio_user_data', initialUserData, true),
+          loadDataFromFile(DATA_FILES.skills, 'portfolio_skills', initialSkills, true),
+          loadDataFromFile(DATA_FILES.experiences, 'portfolio_experiences', initialExperiences, true),
+          loadDataFromFile(DATA_FILES.achievements, 'portfolio_achievements', initialAchievements, true)
+        ]);
 
-    if (storedUserData) setBio(JSON.parse(storedUserData).bio);
-    if (storedSkills) setSkills(JSON.parse(storedSkills));
-    if (storedExperiences) setExperiences(JSON.parse(storedExperiences));
-    if (storedAchievements) setAchievements(JSON.parse(storedAchievements));
+        if (freshUserData) setBio(freshUserData.bio || initialUserData.bio);
+        if (freshSkills) setSkills(freshSkills);
+        if (freshExperiences) setExperiences(freshExperiences);
+        if (freshAchievements) setAchievements(freshAchievements);
+      } catch (error) {
+        console.error('Error loading latest data:', error);
+        // Fallback to localStorage on error
+        const storedUserData = localStorage.getItem('portfolio_user_data');
+        const storedSkills = localStorage.getItem('portfolio_skills');
+        const storedExperiences = localStorage.getItem('portfolio_experiences');
+        const storedAchievements = localStorage.getItem('portfolio_achievements');
+
+        if (storedUserData) {
+          try {
+            setBio(JSON.parse(storedUserData).bio || initialUserData.bio);
+          } catch (e) {}
+        }
+        if (storedSkills) {
+          try {
+            setSkills(JSON.parse(storedSkills));
+          } catch (e) {}
+        }
+        if (storedExperiences) {
+          try {
+            setExperiences(JSON.parse(storedExperiences));
+          } catch (e) {}
+        }
+        if (storedAchievements) {
+          try {
+            setAchievements(JSON.parse(storedAchievements));
+          } catch (e) {}
+        }
+      }
+    };
+
+    loadLatestData();
   }, []);
 
   const handleSave = async () => {
