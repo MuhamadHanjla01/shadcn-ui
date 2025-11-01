@@ -237,10 +237,16 @@ app.options('/api/health', (req, res) => {
 
 // Test GitHub connection - allow POST and OPTIONS
 app.options('/api/github/test', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
   res.sendStatus(200);
 });
 
 app.post('/api/github/test', async (req, res) => {
+  // Add CORS headers explicitly
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
   try {
     const { token, owner, repo } = req.body;
     
