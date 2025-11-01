@@ -9,6 +9,7 @@ import { projects as initialProjects } from '@/lib/data';
 import { loadProjects } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 import { checkForUpdates } from '@/lib/realtime-sync';
+import { getDataFromBackend } from '@/lib/backend-api';
 
 const Projects = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -18,7 +19,11 @@ const Projects = () => {
   useEffect(() => {
     trackPageView('projects');
     const load = async () => {
-      const projects = await loadDataFromFile(
+      console.log('📥 Loading projects...');
+      
+      // Try backend API first, fallback to JSON files
+      const backendProjects = await getDataFromBackend('projects');
+      const projects = backendProjects || await loadDataFromFile(
         DATA_FILES.projects,
         'portfolio_projects',
         initialProjects
@@ -29,13 +34,13 @@ const Projects = () => {
     const onUpdate = () => load();
     window.addEventListener('portfolioDataUpdated', onUpdate);
     
-    // Poll for project updates every 30 seconds
+    // Poll for project updates every 5 seconds (fast real-time!)
     const pollInterval = setInterval(async () => {
       const updated = await checkForUpdates('projects');
       if (updated) {
         setProjectList(updated);
       }
-    }, 30000);
+    }, 5000);
     
     return () => {
       window.removeEventListener('portfolioDataUpdated', onUpdate);

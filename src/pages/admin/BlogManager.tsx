@@ -17,6 +17,7 @@ import {
 import { blogPosts as initialBlogPosts } from '@/lib/data';
 import { saveBlogPosts, isRecentlySaved, loadBlogPosts } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
+import { saveDataToBackend, getDataFromBackend } from '@/lib/backend-api';
 import { BlogPost } from '@/types';
 import { notificationService } from '@/lib/notification-service';
 import { toast } from 'sonner';
@@ -27,21 +28,32 @@ const BlogManager = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    // Load data - prioritize localStorage if recently saved, otherwise load from JSON files
+    // Load data - prioritize backend API, fallback to localStorage/JSON files
     const loadLatestData = async () => {
       try {
-        const blogPostsKey = 'portfolio_blog_posts';
+        console.log('📥 Loading blog posts from backend API...');
+        
+        // Try to load from backend API first
+        const backendBlogPosts = await getDataFromBackend('blog-posts');
+        
         let freshBlogPosts;
         
-        if (isRecentlySaved(blogPostsKey, 5)) {
-          freshBlogPosts = loadBlogPosts(initialBlogPosts);
+        if (backendBlogPosts) {
+          freshBlogPosts = backendBlogPosts;
+          saveBlogPosts(backendBlogPosts);
+          console.log('✅ Loaded blog posts from backend API');
         } else {
-          freshBlogPosts = await loadDataFromFile(
-            DATA_FILES.blogPosts,
-            blogPostsKey,
-            initialBlogPosts,
-            true
-          );
+          const blogPostsKey = 'portfolio_blog_posts';
+          if (isRecentlySaved(blogPostsKey, 5)) {
+            freshBlogPosts = loadBlogPosts(initialBlogPosts);
+          } else {
+            freshBlogPosts = await loadDataFromFile(
+              DATA_FILES.blogPosts,
+              blogPostsKey,
+              initialBlogPosts,
+              true
+            );
+          }
         }
         
         if (freshBlogPosts) setBlogPosts(freshBlogPosts);
@@ -65,9 +77,28 @@ const BlogManager = () => {
     setSaveStatus('idle');
 
     try {
+      // Save to localStorage (for local preview)
       saveBlogPosts(blogPosts);
       
-      // Auto-commit to GitHub if enabled (non-blocking)
+      // Save to backend API (direct connection - real-time updates!)
+      const saveResult = await saveDataToBackend('blog-posts', blogPosts);
+      
+      if (saveResult.success) {
+        toast.success('Changes saved to backend!', {
+          description: 'Users will see updates in real-time'
+        });
+        
+        // Trigger frontend update event
+        window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { 
+          detail: { source: 'backend-api', reload: true, timestamp: Date.now() } 
+        }));
+      } else {
+        toast.error('Failed to save to backend', {
+          description: saveResult.message
+        });
+      }
+      
+      // Optional: Also sync to GitHub if configured (for backup)
       const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
       if (isGitHubSyncConfigured()) {
         // Run GitHub sync in background without blocking save operation

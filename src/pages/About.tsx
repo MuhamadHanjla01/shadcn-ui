@@ -8,6 +8,7 @@ import { userData as initialUserData, skills as initialSkills, experiences as in
 import { loadUserData, loadSkills, loadExperiences, loadAchievements, trackPageView } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 import { checkForUpdates } from '@/lib/realtime-sync';
+import { getDataFromBackend } from '@/lib/backend-api';
 
 const About = () => {
   const [userData, setUserData] = useState(initialUserData);
@@ -40,24 +41,35 @@ const About = () => {
     // Track page view
     trackPageView('about');
 
-    // Load data from shared JSON files (or localStorage fallback)
+    // Load data - prioritize backend API, fallback to JSON files
     const loadData = async () => {
-      const userData = await loadDataFromFile(
+      console.log('📥 Loading about data...');
+      
+      // Try backend API first
+      const [backendUserData, backendSkills, backendExperiences, backendAchievements] = await Promise.all([
+        getDataFromBackend('user'),
+        getDataFromBackend('skills'),
+        getDataFromBackend('experiences'),
+        getDataFromBackend('achievements')
+      ]);
+      
+      // Use backend data if available, otherwise fallback to JSON files
+      const userData = backendUserData || await loadDataFromFile(
         DATA_FILES.user,
         'portfolio_user_data',
         initialUserData
       );
-      const skills = await loadDataFromFile(
+      const skills = backendSkills || await loadDataFromFile(
         DATA_FILES.skills,
         'portfolio_skills',
         initialSkills
       );
-      const experiences = await loadDataFromFile(
+      const experiences = backendExperiences || await loadDataFromFile(
         DATA_FILES.experiences,
         'portfolio_experiences',
         initialExperiences
       );
-      const achievements = await loadDataFromFile(
+      const achievements = backendAchievements || await loadDataFromFile(
         DATA_FILES.achievements,
         'portfolio_achievements',
         initialAchievements
@@ -75,12 +87,13 @@ const About = () => {
     const handleDataUpdate = () => loadData();
     window.addEventListener('portfolioDataUpdated', handleDataUpdate);
     
-    // Poll for updates every 30 seconds
+    // Poll for updates every 5 seconds (fast real-time!)
     const pollInterval = setInterval(async () => {
-      const [updatedSkills, updatedExperiences, updatedAchievements] = await Promise.all([
+      const [updatedSkills, updatedExperiences, updatedAchievements, updatedUserData] = await Promise.all([
         checkForUpdates('skills'),
         checkForUpdates('experiences'),
-        checkForUpdates('achievements')
+        checkForUpdates('achievements'),
+        checkForUpdates('user')
       ]);
       
       if (updatedSkills) setSkills(updatedSkills);
@@ -88,16 +101,10 @@ const About = () => {
       if (updatedAchievements) setAchievements(updatedAchievements);
       
       // Also check user data
-      const freshUserData = await loadDataFromFile(
-        DATA_FILES.user,
-        'portfolio_user_data',
-        initialUserData,
-        false
-      );
-      if (freshUserData && JSON.stringify(freshUserData) !== JSON.stringify(userData)) {
-        setUserData(freshUserData);
+      if (updatedUserData) {
+        setUserData(updatedUserData);
       }
-    }, 30000);
+    }, 5000);
     
     return () => {
       window.removeEventListener('portfolioDataUpdated', handleDataUpdate);

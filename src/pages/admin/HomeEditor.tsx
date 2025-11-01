@@ -22,6 +22,7 @@ import {
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { saveUserData, loadUserData, loadSiteSettings, saveSiteSettings, saveStats, loadStats, isRecentlySaved } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
+import { saveAllDataToBackend, getDataFromBackend } from '@/lib/backend-api';
 import type { Stat } from '@/types';
 import { toast } from 'sonner';
 
@@ -50,42 +51,68 @@ const HomeEditor = () => {
   const [resumeMeta, setResumeMeta] = useState<{ name: string; sizeLabel: string } | null>(null);
   const isInitializedRef = useRef(false);
 
-  // Load data - prioritize localStorage if recently saved, otherwise load from JSON files
-  // This ensures admin sees their latest saves immediately, but also gets published updates
+  // Load data - prioritize backend API, fallback to localStorage/JSON files
   useEffect(() => {
     const loadLatestData = async () => {
       try {
-        // Check if data was recently saved locally (within 5 minutes)
-        // If so, use localStorage directly to avoid overwriting with potentially stale JSON
-        const userDataKey = 'portfolio_user_data';
-        const statsKey = 'portfolio_stats';
-        const settingsKey = 'portfolio_site_settings';
+        console.log('📥 Loading data from backend API...');
         
-        const userRecentlySaved = isRecentlySaved(userDataKey, 5);
-        const statsRecentlySaved = isRecentlySaved(statsKey, 5);
-        const settingsRecentlySaved = isRecentlySaved(settingsKey, 5);
+        // Try to load from backend API first (direct connection)
+        const [backendUserData, backendStats, backendSettings] = await Promise.all([
+          getDataFromBackend('user'),
+          getDataFromBackend('stats'),
+          getDataFromBackend('site-settings')
+        ]);
         
         let freshUserData, freshStats, freshSiteSettings;
         
-        if (userRecentlySaved) {
-          // Use localStorage if recently saved
-          console.log('📝 Using recently saved localStorage data (avoiding stale JSON)');
-          freshUserData = loadUserData(initialUserData);
+        // Use backend data if available, otherwise fallback to localStorage/JSON
+        if (backendUserData) {
+          freshUserData = backendUserData;
+          // Update localStorage for local preview
+          saveUserData(backendUserData);
+          console.log('✅ Loaded user data from backend API');
         } else {
-          // Load from JSON files to get latest published data
-          freshUserData = await loadDataFromFile(DATA_FILES.user, userDataKey, initialUserData, true);
+          // Fallback: Check if data was recently saved locally
+          const userDataKey = 'portfolio_user_data';
+          const userRecentlySaved = isRecentlySaved(userDataKey, 5);
+          
+          if (userRecentlySaved) {
+            freshUserData = loadUserData(initialUserData);
+            console.log('📝 Using recently saved localStorage data');
+          } else {
+            freshUserData = await loadDataFromFile(DATA_FILES.user, userDataKey, initialUserData, true);
+          }
         }
         
-        if (statsRecentlySaved) {
-          freshStats = loadStats(initialStats);
+        if (backendStats) {
+          freshStats = backendStats;
+          saveStats(backendStats);
+          console.log('✅ Loaded stats from backend API');
         } else {
-          freshStats = await loadDataFromFile(DATA_FILES.stats, statsKey, initialStats, true);
+          const statsKey = 'portfolio_stats';
+          const statsRecentlySaved = isRecentlySaved(statsKey, 5);
+          
+          if (statsRecentlySaved) {
+            freshStats = loadStats(initialStats);
+          } else {
+            freshStats = await loadDataFromFile(DATA_FILES.stats, statsKey, initialStats, true);
+          }
         }
         
-        if (settingsRecentlySaved) {
-          freshSiteSettings = loadSiteSettings();
+        if (backendSettings) {
+          freshSiteSettings = backendSettings;
+          saveSiteSettings(backendSettings);
+          console.log('✅ Loaded site settings from backend API');
         } else {
-          freshSiteSettings = await loadDataFromFile(DATA_FILES.siteSettings, settingsKey, loadSiteSettings(), true);
+          const settingsKey = 'portfolio_site_settings';
+          const settingsRecentlySaved = isRecentlySaved(settingsKey, 5);
+          
+          if (settingsRecentlySaved) {
+            freshSiteSettings = loadSiteSettings();
+          } else {
+            freshSiteSettings = await loadDataFromFile(DATA_FILES.siteSettings, settingsKey, loadSiteSettings(), true);
+          }
         }
 
         // Update stats
@@ -309,7 +336,7 @@ const HomeEditor = () => {
         socialMedia: homeData.socialMedia
       };
       
-      // Save to localStorage (this triggers real-time updates via events)
+      // Save to localStorage (for local preview)
       saveUserData(dataToSave);
       saveStats(stats);
       
@@ -322,8 +349,32 @@ const HomeEditor = () => {
       };
       saveSiteSettings(updatedSettings);
       
+      // Save to backend API (direct connection - no GitHub sync needed!)
+      const saveResult = await saveAllDataToBackend({
+        'user': {
+          ...dataToSave,
+          bio: dataToSave.bio || initialUserData.bio,
+        },
+        'stats': stats,
+        'site-settings': updatedSettings
+      });
+      
+      if (saveResult.success) {
+        toast.success('Changes saved to backend!', {
+          description: 'Users will see updates in real-time'
+        });
+        
+        // Trigger frontend update event
+        window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { 
+          detail: { source: 'backend-api', reload: true, timestamp: Date.now() } 
+        }));
+      } else {
+        toast.error('Failed to save to backend', {
+          description: saveResult.message
+        });
+      }
+      
       // Force update the form immediately with saved data (real-time update)
-      // This ensures the admin panel shows the exact data that was saved
       setHomeData(prev => ({
         ...prev,
         name: dataToSave.name,
@@ -334,7 +385,7 @@ const HomeEditor = () => {
         socialMedia: dataToSave.socialMedia
       }));
       
-      // Auto-commit to GitHub if enabled (non-blocking)
+      // Optional: Also sync to GitHub if configured (for backup/redundancy)
       const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
       if (isGitHubSyncConfigured()) {
         // Run GitHub sync in background without blocking save operation

@@ -16,6 +16,7 @@ import {
 import { userData as initialUserData, skills as initialSkills, experiences as initialExperiences, achievements as initialAchievements } from '@/lib/data';
 import { saveUserData, saveSkills, saveExperiences, saveAchievements, isRecentlySaved, loadUserData, loadSkills, loadExperiences, loadAchievements } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
+import { saveAllDataToBackend, getDataFromBackend } from '@/lib/backend-api';
 import { Skill, Experience, Achievement } from '@/types';
 import { toast } from 'sonner';
 
@@ -28,38 +29,68 @@ const AboutEditor = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    // Load data - prioritize localStorage if recently saved, otherwise load from JSON files
+    // Load data - prioritize backend API, fallback to localStorage/JSON files
     const loadLatestData = async () => {
       try {
-        const userKey = 'portfolio_user_data';
-        const skillsKey = 'portfolio_skills';
-        const experiencesKey = 'portfolio_experiences';
-        const achievementsKey = 'portfolio_achievements';
+        console.log('📥 Loading about data from backend API...');
+        
+        // Try to load from backend API first
+        const [backendUserData, backendSkills, backendExperiences, backendAchievements] = await Promise.all([
+          getDataFromBackend('user'),
+          getDataFromBackend('skills'),
+          getDataFromBackend('experiences'),
+          getDataFromBackend('achievements')
+        ]);
         
         let freshUserData, freshSkills, freshExperiences, freshAchievements;
         
-        if (isRecentlySaved(userKey, 5)) {
-          freshUserData = loadUserData(initialUserData);
+        // Use backend data if available
+        if (backendUserData) {
+          freshUserData = backendUserData;
+          saveUserData(backendUserData);
         } else {
-          freshUserData = await loadDataFromFile(DATA_FILES.user, userKey, initialUserData, true);
+          const userKey = 'portfolio_user_data';
+          if (isRecentlySaved(userKey, 5)) {
+            freshUserData = loadUserData(initialUserData);
+          } else {
+            freshUserData = await loadDataFromFile(DATA_FILES.user, userKey, initialUserData, true);
+          }
         }
         
-        if (isRecentlySaved(skillsKey, 5)) {
-          freshSkills = loadSkills(initialSkills);
+        if (backendSkills) {
+          freshSkills = backendSkills;
+          saveSkills(backendSkills);
         } else {
-          freshSkills = await loadDataFromFile(DATA_FILES.skills, skillsKey, initialSkills, true);
+          const skillsKey = 'portfolio_skills';
+          if (isRecentlySaved(skillsKey, 5)) {
+            freshSkills = loadSkills(initialSkills);
+          } else {
+            freshSkills = await loadDataFromFile(DATA_FILES.skills, skillsKey, initialSkills, true);
+          }
         }
         
-        if (isRecentlySaved(experiencesKey, 5)) {
-          freshExperiences = loadExperiences(initialExperiences);
+        if (backendExperiences) {
+          freshExperiences = backendExperiences;
+          saveExperiences(backendExperiences);
         } else {
-          freshExperiences = await loadDataFromFile(DATA_FILES.experiences, experiencesKey, initialExperiences, true);
+          const experiencesKey = 'portfolio_experiences';
+          if (isRecentlySaved(experiencesKey, 5)) {
+            freshExperiences = loadExperiences(initialExperiences);
+          } else {
+            freshExperiences = await loadDataFromFile(DATA_FILES.experiences, experiencesKey, initialExperiences, true);
+          }
         }
         
-        if (isRecentlySaved(achievementsKey, 5)) {
-          freshAchievements = loadAchievements(initialAchievements);
+        if (backendAchievements) {
+          freshAchievements = backendAchievements;
+          saveAchievements(backendAchievements);
         } else {
-          freshAchievements = await loadDataFromFile(DATA_FILES.achievements, achievementsKey, initialAchievements, true);
+          const achievementsKey = 'portfolio_achievements';
+          if (isRecentlySaved(achievementsKey, 5)) {
+            freshAchievements = loadAchievements(initialAchievements);
+          } else {
+            freshAchievements = await loadDataFromFile(DATA_FILES.achievements, achievementsKey, initialAchievements, true);
+          }
         }
 
         if (freshUserData) setBio(freshUserData.bio || initialUserData.bio);

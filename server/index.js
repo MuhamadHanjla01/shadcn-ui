@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { promises as fs } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -604,11 +605,227 @@ app.all('*', (req, res) => {
   }
 });
 
+// ============================================
+// DIRECT DATA STORAGE API (No GitHub Sync Needed)
+// ============================================
+
+// Data storage directory (persists on Railway with persistent volumes)
+const DATA_DIR = join(__dirname, 'data');
+
+// Ensure data directory exists
+async function ensureDataDir() {
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    console.log('✅ Data directory ready:', DATA_DIR);
+  } catch (error) {
+    console.error('⚠️ Error creating data directory:', error.message);
+  }
+}
+
+ensureDataDir();
+
+// Data file mapping
+const DATA_FILE_MAP = {
+  'user': 'user.json',
+  'stats': 'stats.json',
+  'skills': 'skills.json',
+  'experiences': 'experiences.json',
+  'achievements': 'achievements.json',
+  'projects': 'projects.json',
+  'blog-posts': 'blog-posts.json',
+  'site-settings': 'site-settings.json'
+};
+
+/**
+ * Get data file path
+ */
+function getDataFilePath(type) {
+  const filename = DATA_FILE_MAP[type] || `${type}.json`;
+  return join(DATA_DIR, filename);
+}
+
+/**
+ * GET /api/data/:type - Get portfolio data
+ */
+app.options('/api/data/:type', (req, res) => {
+  res.sendStatus(200);
+});
+
+app.get('/api/data/:type', async (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  try {
+    const { type } = req.params;
+    
+    if (!DATA_FILE_MAP[type]) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid data type: ${type}. Valid types: ${Object.keys(DATA_FILE_MAP).join(', ')}`
+      });
+    }
+    
+    const filePath = getDataFilePath(type);
+    
+    try {
+      const fileContent = await fs.readFile(filePath, 'utf8');
+      const data = JSON.parse(fileContent);
+      
+      res.json({
+        success: true,
+        data: data,
+        timestamp: new Date().toISOString()
+      });
+    } catch (fileError) {
+      if (fileError.code === 'ENOENT') {
+        // File doesn't exist yet - return empty/default data
+        res.json({
+          success: true,
+          data: null,
+          message: 'Data not found, returning null',
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        throw fileError;
+      }
+    }
+  } catch (error) {
+    console.error('Error getting data:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get data'
+    });
+  }
+});
+
+/**
+ * POST /api/data/:type - Save portfolio data
+ */
+app.options('/api/data/:type', (req, res) => {
+  res.sendStatus(200);
+});
+
+app.post('/api/data/:type', async (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  try {
+    const { type } = req.params;
+    const { data } = req.body;
+    
+    if (!DATA_FILE_MAP[type]) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid data type: ${type}. Valid types: ${Object.keys(DATA_FILE_MAP).join(', ')}`
+      });
+    }
+    
+    if (data === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing data in request body'
+      });
+    }
+    
+    const filePath = getDataFilePath(type);
+    const fileContent = JSON.stringify(data, null, 2);
+    
+    // Save to file
+    await fs.writeFile(filePath, fileContent, 'utf8');
+    
+    console.log(`✅ Saved ${type} data to ${filePath}`);
+    
+    res.json({
+      success: true,
+      message: `${type} data saved successfully`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error saving data:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to save data'
+    });
+  }
+});
+
+/**
+ * POST /api/data/save-all - Save multiple data types at once
+ */
+app.options('/api/data/save-all', (req, res) => {
+  res.sendStatus(200);
+});
+
+app.post('/api/data/save-all', async (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  try {
+    const { data } = req.body;
+    
+    if (!data || typeof data !== 'object') {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing or invalid data object'
+      });
+    }
+    
+    const results = {};
+    const errors = {};
+    
+    // Save each data type
+    for (const [type, content] of Object.entries(data)) {
+      if (DATA_FILE_MAP[type]) {
+        try {
+          const filePath = getDataFilePath(type);
+          const fileContent = JSON.stringify(content, null, 2);
+          await fs.writeFile(filePath, fileContent, 'utf8');
+          results[type] = 'saved';
+          console.log(`✅ Saved ${type} data`);
+        } catch (error) {
+          errors[type] = error.message;
+          console.error(`❌ Error saving ${type}:`, error.message);
+        }
+      }
+    }
+    
+    const successCount = Object.keys(results).length;
+    const errorCount = Object.keys(errors).length;
+    
+    if (errorCount > 0) {
+      res.status(207).json({ // 207 Multi-Status
+        success: errorCount === 0,
+        message: `Saved ${successCount} file(s), ${errorCount} error(s)`,
+        results: results,
+        errors: errors
+      });
+    } else {
+      res.json({
+        success: true,
+        message: `Successfully saved ${successCount} file(s)`,
+        results: results,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('Error saving all data:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to save data'
+    });
+  }
+});
+
 // Note: Static file serving removed - Railway only deploys the backend API
 // Frontend is hosted separately on GitHub Pages
 
 app.listen(PORT, () => {
   console.log(`🚀 Backend API server running on http://localhost:${PORT}`);
   console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
+  console.log(`💾 Data storage directory: ${DATA_DIR}`);
+  console.log(`📊 Data API endpoints:`);
+  console.log(`   GET  /api/data/:type - Get data`);
+  console.log(`   POST /api/data/:type - Save data`);
+  console.log(`   POST /api/data/save-all - Save multiple data types`);
 });
 

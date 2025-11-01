@@ -10,6 +10,7 @@ import { blogPosts as initialBlogPosts } from '@/lib/data';
 import { loadBlogPosts } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 import { checkForUpdates } from '@/lib/realtime-sync';
+import { getDataFromBackend } from '@/lib/backend-api';
 
 const Blog = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +20,11 @@ const Blog = () => {
   useEffect(() => {
     trackPageView('blog');
     const load = async () => {
-      const blogPosts = await loadDataFromFile(
+      console.log('📥 Loading blog posts...');
+      
+      // Try backend API first, fallback to JSON files
+      const backendBlogPosts = await getDataFromBackend('blog-posts');
+      const blogPosts = backendBlogPosts || await loadDataFromFile(
         DATA_FILES.blogPosts,
         'portfolio_blog_posts',
         initialBlogPosts
@@ -30,13 +35,13 @@ const Blog = () => {
     const onUpdate = () => load();
     window.addEventListener('portfolioDataUpdated', onUpdate);
     
-    // Poll for blog post updates every 30 seconds
+    // Poll for blog post updates every 5 seconds (fast real-time!)
     const pollInterval = setInterval(async () => {
       const updated = await checkForUpdates('blogPosts');
       if (updated) {
         setPosts(updated);
       }
-    }, 30000);
+    }, 5000);
     
     return () => {
       window.removeEventListener('portfolioDataUpdated', onUpdate);

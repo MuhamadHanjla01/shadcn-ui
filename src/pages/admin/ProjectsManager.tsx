@@ -19,6 +19,7 @@ import {
 import { projects as initialProjects } from '@/lib/data';
 import { saveProjects, isRecentlySaved, loadProjects } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
+import { saveDataToBackend, getDataFromBackend } from '@/lib/backend-api';
 import { Project } from '@/types';
 import { notificationService } from '@/lib/notification-service';
 import { toast } from 'sonner';
@@ -29,21 +30,32 @@ const ProjectsManager = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    // Load data - prioritize localStorage if recently saved, otherwise load from JSON files
+    // Load data - prioritize backend API, fallback to localStorage/JSON files
     const loadLatestData = async () => {
       try {
-        const projectsKey = 'portfolio_projects';
+        console.log('📥 Loading projects from backend API...');
+        
+        // Try to load from backend API first
+        const backendProjects = await getDataFromBackend('projects');
+        
         let freshProjects;
         
-        if (isRecentlySaved(projectsKey, 5)) {
-          freshProjects = loadProjects(initialProjects);
+        if (backendProjects) {
+          freshProjects = backendProjects;
+          saveProjects(backendProjects);
+          console.log('✅ Loaded projects from backend API');
         } else {
-          freshProjects = await loadDataFromFile(
-            DATA_FILES.projects,
-            projectsKey,
-            initialProjects,
-            true
-          );
+          const projectsKey = 'portfolio_projects';
+          if (isRecentlySaved(projectsKey, 5)) {
+            freshProjects = loadProjects(initialProjects);
+          } else {
+            freshProjects = await loadDataFromFile(
+              DATA_FILES.projects,
+              projectsKey,
+              initialProjects,
+              true
+            );
+          }
         }
         
         if (freshProjects) setProjects(freshProjects);
@@ -67,9 +79,28 @@ const ProjectsManager = () => {
     setSaveStatus('idle');
 
     try {
+      // Save to localStorage (for local preview)
       saveProjects(projects);
       
-      // Auto-commit to GitHub if enabled (non-blocking)
+      // Save to backend API (direct connection - real-time updates!)
+      const saveResult = await saveDataToBackend('projects', projects);
+      
+      if (saveResult.success) {
+        toast.success('Changes saved to backend!', {
+          description: 'Users will see updates in real-time'
+        });
+        
+        // Trigger frontend update event
+        window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { 
+          detail: { source: 'backend-api', reload: true, timestamp: Date.now() } 
+        }));
+      } else {
+        toast.error('Failed to save to backend', {
+          description: saveResult.message
+        });
+      }
+      
+      // Optional: Also sync to GitHub if configured (for backup)
       const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
       if (isGitHubSyncConfigured()) {
         // Run GitHub sync in background without blocking save operation

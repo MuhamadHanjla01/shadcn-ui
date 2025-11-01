@@ -7,9 +7,10 @@
 
 import { DATA_FILES } from './data-sync';
 import { loadDataFromFile } from './data-sync';
+import { getDataFromBackend } from './backend-api';
 
-// Polling interval in milliseconds (30 seconds)
-const POLL_INTERVAL = 30000;
+// Polling interval in milliseconds (5 seconds for fast real-time updates!)
+const POLL_INTERVAL = 5000;
 
 // Track last known data versions to detect changes
 const lastDataVersions: Map<string, string> = new Map();
@@ -97,33 +98,18 @@ export function startRealtimeSync(callback: (updates: {
     return () => {}; // Return no-op cleanup
   }
 
-  console.log('🔄 Starting real-time sync - polling every 30 seconds for updates');
+  console.log('🔄 Starting real-time sync - polling backend API every 5 seconds for updates');
 
   const pollForUpdates = async (isInitialPoll: boolean = false) => {
     try {
-      console.log('🔍 Polling for updates...', new Date().toLocaleTimeString());
+      console.log('🔍 Polling for updates from backend API...', new Date().toLocaleTimeString());
       
-      // Force refresh to bypass cache and get latest data from server
-      const freshUserData = await loadDataFromFile(
-        DATA_FILES.user,
-        'portfolio_user_data',
-        null,
-        true // Force refresh to get latest from server
-      );
-      
-      const freshStats = await loadDataFromFile(
-        DATA_FILES.stats,
-        'portfolio_stats',
-        null,
-        true // Force refresh
-      );
-      
-      const freshSiteSettings = await loadDataFromFile(
-        DATA_FILES.siteSettings,
-        'portfolio_site_settings',
-        null,
-        true // Force refresh
-      );
+      // Load from backend API (direct connection - faster than JSON files!)
+      const [freshUserData, freshStats, freshSiteSettings] = await Promise.all([
+        getDataFromBackend('user'),
+        getDataFromBackend('stats'),
+        getDataFromBackend('site-settings')
+      ]);
 
       // Debug: Log what we fetched
       console.log('📥 Fetched data:', {
@@ -223,12 +209,8 @@ export async function checkForUpdates(dataType: 'projects' | 'blogPosts' | 'skil
   };
 
   try {
-    const freshData = await loadDataFromFile(
-      fileMap[dataType],
-      keyMap[dataType],
-      null,
-      true // Force refresh to get latest from server
-    );
+    // Use backend API for direct, fast updates
+    const freshData = await getDataFromBackend(dataType);
 
     // Always check if we've polled before - if not, this is initialization
     const hasPolled = hasInitialPolled.get(dataType) || false;
