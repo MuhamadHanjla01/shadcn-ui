@@ -71,9 +71,39 @@ export async function loadDataFromFile<T>(
 
     if (response.ok) {
       const data = await response.json();
-      // Update localStorage with fetched data so admin can see it too
+      // Only update localStorage if data wasn't recently saved locally
+      // This prevents overwriting fresh admin edits with potentially stale JSON data
       if (typeof window !== 'undefined') {
-        localStorage.setItem(localStorageKey, JSON.stringify(data));
+        // Check if this data was recently saved (within 5 minutes)
+        const { isRecentlySaved } = await import('./storage');
+        const recentlySaved = isRecentlySaved(localStorageKey, 5);
+        
+        if (!recentlySaved) {
+          // Safe to update localStorage with JSON data
+          localStorage.setItem(localStorageKey, JSON.stringify(data));
+          console.log(`✅ Loaded ${filePath} from shared JSON file and updated localStorage`, {
+            timestamp: new Date().toISOString(),
+            forceRefresh: forceRefresh,
+            dataPreview: typeof data === 'object' ? Object.keys(data).slice(0, 5) : 'N/A'
+          });
+        } else {
+          // Data was recently saved - don't overwrite, use localStorage instead
+          console.log(`📝 Skipping JSON update for ${filePath} - localStorage has recent saves`, {
+            timestamp: new Date().toISOString()
+          });
+          const stored = localStorage.getItem(localStorageKey);
+          if (stored) {
+            try {
+              return JSON.parse(stored);
+            } catch (e) {
+              // If localStorage parse fails, use JSON data
+              localStorage.setItem(localStorageKey, JSON.stringify(data));
+            }
+          } else {
+            // No localStorage but recently saved flag exists - use JSON data
+            localStorage.setItem(localStorageKey, JSON.stringify(data));
+          }
+        }
       }
       console.log(`✅ Loaded ${filePath} from shared JSON file`, {
         timestamp: new Date().toISOString(),

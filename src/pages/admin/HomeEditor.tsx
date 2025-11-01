@@ -206,6 +206,47 @@ const HomeEditor = () => {
     loadLatestData();
   }, []);
 
+  // Listen for real-time updates from other admin panels or saves
+  useEffect(() => {
+    const handleStorageUpdate = (event: CustomEvent) => {
+      const { key, data } = event.detail || {};
+      
+      // Reload data if user data was updated
+      if (key === 'portfolio_user_data' && data) {
+        console.log('🔄 Real-time update: User data changed');
+        setHomeData(prev => ({
+          ...prev,
+          name: data.name || prev.name,
+          title: data.title || prev.title,
+          tagline: data.tagline || prev.tagline,
+          profileImage: data.profileImage || prev.profileImage,
+          resume: data.resume || prev.resume,
+          socialMedia: data.socialMedia || prev.socialMedia
+        }));
+      }
+      
+      // Reload stats if updated
+      if (key === 'portfolio_stats' && data) {
+        console.log('🔄 Real-time update: Stats changed');
+        setStats(data);
+      }
+      
+      // Reload site settings if updated
+      if (key === 'portfolio_site_settings' && data) {
+        console.log('🔄 Real-time update: Site settings changed');
+        if (data.heroLayout && ['left','center','right'].includes(data.heroLayout)) {
+          setHomeData(prev => ({ ...prev, heroLayout: data.heroLayout as 'left'|'center'|'right' }));
+        }
+        if (data.socialVisibility) {
+          setHomeData(prev => ({ ...prev, socialVisibility: data.socialVisibility }));
+        }
+      }
+    };
+
+    window.addEventListener('portfolioDataUpdated', handleStorageUpdate as EventListener);
+    return () => window.removeEventListener('portfolioDataUpdated', handleStorageUpdate as EventListener);
+  }, []);
+
   // Auto-save and broadcast updates to frontend (debounced)
   // Excludes heroLayout and resume so they only update frontend on explicit Save
   useEffect(() => {
@@ -268,9 +309,10 @@ const HomeEditor = () => {
         socialMedia: homeData.socialMedia
       };
       
+      // Save to localStorage (this triggers real-time updates via events)
       saveUserData(dataToSave);
-      saveStats(stats); // Save stats
-
+      saveStats(stats);
+      
       // Persist hero layout in site settings
       const currentSettings = loadSiteSettings();
       const updatedSettings = {
@@ -279,6 +321,18 @@ const HomeEditor = () => {
         socialVisibility: { ...homeData.socialVisibility }
       };
       saveSiteSettings(updatedSettings);
+      
+      // Force update the form immediately with saved data (real-time update)
+      // This ensures the admin panel shows the exact data that was saved
+      setHomeData(prev => ({
+        ...prev,
+        name: dataToSave.name,
+        title: dataToSave.title,
+        tagline: dataToSave.tagline,
+        profileImage: dataToSave.profileImage,
+        resume: dataToSave.resume,
+        socialMedia: dataToSave.socialMedia
+      }));
       
       // Auto-commit to GitHub if enabled (non-blocking)
       const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
