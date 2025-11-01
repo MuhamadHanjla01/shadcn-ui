@@ -19,12 +19,14 @@ export interface GitHubConfig {
  * Get the backend API base URL
  */
 function getApiBaseUrl(): string {
-  // In development, use localhost. In production, use environment variable or relative URL
+  // In development, use localhost
   if (import.meta.env.DEV) {
     return import.meta.env.VITE_API_URL || 'http://localhost:3001';
   }
-  // In production, try to use environment variable, otherwise use same origin
-  return import.meta.env.VITE_API_URL || window.location.origin;
+  // In production, use environment variable or fallback to Railway URL
+  // TODO: Replace with your Railway backend URL after deployment
+  // Get this from Railway dashboard → Settings → Domains
+  return import.meta.env.VITE_API_URL || 'https://your-railway-app.up.railway.app';
 }
 
 /**
