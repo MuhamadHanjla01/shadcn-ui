@@ -157,7 +157,9 @@ export const loadThemeSettings = async (): Promise<ThemeSettings> => {
 
   try {
     // Try to load from public/theme.json first (for GitHub Pages deployment)
-    const response = await fetch('/theme.json');
+    const response = await fetch('/theme.json', { 
+      cache: 'no-store'
+    });
     if (response.ok) {
       const publicTheme = await response.json();
       // Validate and merge with defaults
@@ -168,9 +170,10 @@ export const loadThemeSettings = async (): Promise<ThemeSettings> => {
         darkMode: publicTheme.darkMode ?? defaultSettings.darkMode
       };
     }
+    // 404 is expected if theme.json doesn't exist - silently fall through to localStorage
   } catch (error) {
     // If theme.json doesn't exist or fetch fails, fall back to localStorage
-    console.log('theme.json not found, using localStorage fallback');
+    // Silently handle - 404 errors are expected if theme.json doesn't exist
   }
 
   // Fall back to localStorage (for admin preview/development)
