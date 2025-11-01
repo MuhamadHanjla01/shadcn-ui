@@ -171,18 +171,28 @@ const Home = () => {
     
     // Start real-time polling for updates (for user devices)
     const cleanup = startRealtimeSync((updates) => {
+      console.log('🎯 Real-time sync callback triggered with updates:', Object.keys(updates));
+      
       // Update UI with new data
       if (updates.user) {
+        console.log('🔄 Updating user data in UI:', updates.user.name);
         setUserData(updates.user);
         setDisplayText('');
         setCurrentIndex(0);
       }
       if (updates.stats) {
+        console.log('🔄 Updating stats in UI:', updates.stats.length, 'items');
         setStats(updates.stats);
       }
       if (updates.siteSettings) {
+        console.log('🔄 Updating site settings in UI');
         setHeroLayout((updates.siteSettings.heroLayout as 'left'|'center'|'right') || 'center');
         setSocialVisibility(updates.siteSettings.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+      }
+      
+      // Show visual feedback (optional toast notification)
+      if (Object.keys(updates).length > 0) {
+        console.log('✅ UI updated successfully with new data!');
       }
     });
     

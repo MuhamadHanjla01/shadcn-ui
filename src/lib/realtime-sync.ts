@@ -106,41 +106,70 @@ export function startRealtimeSync(callback: (updates: {
         true // Force refresh
       );
 
+      // Debug: Log what we fetched
+      console.log('📥 Fetched data:', {
+        user: freshUserData ? `✅ ${freshUserData.name || 'Unknown'}` : '❌',
+        stats: freshStats ? `✅ ${freshStats.length} items` : '❌',
+        settings: freshSiteSettings ? '✅' : '❌'
+      });
+
       // Check for changes
       const updates: any = {};
       let hasUpdates = false;
 
-      if (freshUserData && hasDataChanged('user', freshUserData)) {
-        updates.user = freshUserData;
-        hasUpdates = true;
-        console.log('🔄 User data updated');
+      if (freshUserData) {
+        const userChanged = hasDataChanged('user', freshUserData);
+        console.log('🔍 User data check:', userChanged ? '✅ CHANGED' : '⏸️ No change');
+        if (userChanged) {
+          updates.user = freshUserData;
+          hasUpdates = true;
+          console.log('🔄 User data updated:', {
+            name: freshUserData.name,
+            title: freshUserData.title
+          });
+        }
       }
 
-      if (freshStats && hasDataChanged('stats', freshStats)) {
-        updates.stats = freshStats;
-        hasUpdates = true;
-        console.log('🔄 Stats updated');
+      if (freshStats) {
+        const statsChanged = hasDataChanged('stats', freshStats);
+        console.log('🔍 Stats check:', statsChanged ? '✅ CHANGED' : '⏸️ No change');
+        if (statsChanged) {
+          updates.stats = freshStats;
+          hasUpdates = true;
+          console.log('🔄 Stats updated:', { count: freshStats.length });
+        }
       }
 
-      if (freshSiteSettings && hasDataChanged('siteSettings', freshSiteSettings)) {
-        updates.siteSettings = freshSiteSettings;
-        hasUpdates = true;
-        console.log('🔄 Site settings updated');
+      if (freshSiteSettings) {
+        const settingsChanged = hasDataChanged('siteSettings', freshSiteSettings);
+        console.log('🔍 Site settings check:', settingsChanged ? '✅ CHANGED' : '⏸️ No change');
+        if (settingsChanged) {
+          updates.siteSettings = freshSiteSettings;
+          hasUpdates = true;
+          console.log('🔄 Site settings updated');
+        }
       }
 
       // Only call callback if there are actual updates
       if (hasUpdates) {
-        console.log('✅ Real-time update detected - refreshing UI');
+        console.log('✅✅✅ Real-time update detected - refreshing UI', updates);
         callback(updates);
+      } else {
+        console.log('⏸️ No updates detected this poll');
       }
     } catch (error) {
-      // Silently handle errors - don't spam console
-      console.debug('Real-time sync check:', error);
+      // Log errors for debugging
+      console.error('❌ Real-time sync error:', error);
     }
   };
 
-  // Poll immediately, then set interval
-  pollForUpdates();
+  // Wait a bit before first poll to let initial page load complete
+  // Then poll immediately, then set interval
+  setTimeout(() => {
+    console.log('⏰ Starting initial poll after page load...');
+    pollForUpdates();
+  }, 5000); // Wait 5 seconds after page load
+  
   const intervalId = setInterval(pollForUpdates, POLL_INTERVAL);
 
   // Return cleanup function
