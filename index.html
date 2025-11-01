@@ -137,8 +137,8 @@
         // Update immediately with localStorage data
         updateOGTags(parsedUser, parsedSettings);
         
-        // Update title if not set from settings
-        if (parsedSettings.metaTitle) {
+        // Update title and other settings if available
+        if (parsedSettings && parsedSettings.metaTitle) {
           document.title = parsedSettings.metaTitle;
           
           // Generate favicon from text
@@ -166,12 +166,12 @@
 
           // Update favicon using theme logo (image or text mode)
           var faviconUrl = '';
-          if (parsed.logoMode === 'text' && parsed.logoText) {
+          if (parsedSettings.logoMode === 'text' && parsedSettings.logoText) {
             // Generate favicon from text
-            faviconUrl = generateTextFavicon(parsed.logoText);
-          } else if (parsed.logo) {
+            faviconUrl = generateTextFavicon(parsedSettings.logoText);
+          } else if (parsedSettings.logo) {
             // Use image logo
-            faviconUrl = parsed.logo;
+            faviconUrl = parsedSettings.logo;
           }
           
           if (faviconUrl) {
@@ -189,27 +189,27 @@
           }
           
           // Update meta description
-          if (parsed.metaDescription) {
+          if (parsedSettings.metaDescription) {
             let metaDesc = document.querySelector('meta[name="description"]');
             if (metaDesc) {
-              metaDesc.setAttribute('content', parsed.metaDescription);
+              metaDesc.setAttribute('content', parsedSettings.metaDescription);
             } else {
               metaDesc = document.createElement('meta');
               metaDesc.name = 'description';
-              metaDesc.content = parsed.metaDescription;
+              metaDesc.content = parsedSettings.metaDescription;
               document.head.appendChild(metaDesc);
             }
           }
           
           // Update meta keywords
-          if (parsed.metaKeywords) {
+          if (parsedSettings.metaKeywords) {
             let metaKeys = document.querySelector('meta[name="keywords"]');
             if (metaKeys) {
-              metaKeys.setAttribute('content', parsed.metaKeywords);
+              metaKeys.setAttribute('content', parsedSettings.metaKeywords);
             } else {
               metaKeys = document.createElement('meta');
               metaKeys.name = 'keywords';
-              metaKeys.content = parsed.metaKeywords;
+              metaKeys.content = parsedSettings.metaKeywords;
               document.head.appendChild(metaKeys);
             }
           }
@@ -256,13 +256,13 @@
     }(window.location))
   </script>
 
-  <script type="module" crossorigin src="/shadcn-ui/assets/index-203gEuCt.js"></script>
+  <script type="module" crossorigin src="/shadcn-ui/assets/index-Ds_2Nw4-.js"></script>
   <link rel="modulepreload" crossorigin href="/shadcn-ui/assets/vendor-FrrXPGxH.js">
   <link rel="stylesheet" crossorigin href="/shadcn-ui/assets/index-Cw8x69wl.css">
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root"></div>
 </body>
 
 </html>
