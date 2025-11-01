@@ -277,11 +277,21 @@ app.post('/api/github/test', async (req, res) => {
   res.header('Access-Control-Allow-Credentials', 'true');
   
   try {
+    // Check if fetch is available (Node.js 18+)
+    if (typeof fetch === 'undefined') {
+      return res.status(500).json({
+        success: false,
+        message: 'Server error: fetch API not available. Please ensure Node.js 18+ is being used.',
+        hint: 'Railway should auto-detect Node 18+ from package.json'
+      });
+    }
+    
     // Log request for debugging
     console.log('GitHub test request received:', { 
       owner: req.body?.owner, 
       repo: req.body?.repo,
-      hasToken: !!req.body?.token 
+      hasToken: !!req.body?.token,
+      nodeVersion: process.version
     });
     
     const { token, owner, repo } = req.body;
@@ -292,12 +302,29 @@ app.post('/api/github/test', async (req, res) => {
         message: 'Missing required fields: token, owner, or repo'
       });
     }
+    
+    // Validate inputs
+    if (typeof token !== 'string' || token.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid token format'
+      });
+    }
+    
+    if (typeof owner !== 'string' || typeof repo !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid owner or repo format'
+      });
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     try {
-      const testUrl = `https://api.github.com/repos/${owner}/${repo}`;
+      const testUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+      console.log('Testing GitHub API:', testUrl);
+      
       const response = await fetch(testUrl, {
         headers: {
           'Authorization': `token ${token}`,
