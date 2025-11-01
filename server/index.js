@@ -50,10 +50,11 @@ app.use(express.json());
 
 // Middleware to normalize double slashes in URLs (fix for //api/... issues)
 app.use((req, res, next) => {
-  // Replace multiple consecutive slashes with single slash
-  if (req.path.includes('//')) {
+  // Replace multiple consecutive slashes with single slash in the URL
+  // Note: req.path is read-only, so we only modify req.url
+  if (req.url.includes('//')) {
     req.url = req.url.replace(/\/+/g, '/');
-    req.path = req.path.replace(/\/+/g, '/');
+    // req.path is a getter that reads from req.url, so it will update automatically
   }
   next();
 });
