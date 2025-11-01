@@ -20,7 +20,7 @@ import {
   Download
 } from 'lucide-react';
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
-import { saveUserData, loadUserData, loadSiteSettings, saveSiteSettings, saveStats, loadStats } from '@/lib/storage';
+import { saveUserData, loadUserData, loadSiteSettings, saveSiteSettings, saveStats, loadStats, isRecentlySaved } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 import type { Stat } from '@/types';
 import { toast } from 'sonner';
@@ -50,17 +50,43 @@ const HomeEditor = () => {
   const [resumeMeta, setResumeMeta] = useState<{ name: string; sizeLabel: string } | null>(null);
   const isInitializedRef = useRef(false);
 
-  // Load data from JSON files first (with force refresh), then fallback to localStorage
-  // This ensures admin always sees the latest published data
+  // Load data - prioritize localStorage if recently saved, otherwise load from JSON files
+  // This ensures admin sees their latest saves immediately, but also gets published updates
   useEffect(() => {
     const loadLatestData = async () => {
       try {
-        // Force refresh from JSON files to get latest published data
-        const [freshUserData, freshStats, freshSiteSettings] = await Promise.all([
-          loadDataFromFile(DATA_FILES.user, 'portfolio_user_data', initialUserData, true),
-          loadDataFromFile(DATA_FILES.stats, 'portfolio_stats', initialStats, true),
-          loadDataFromFile(DATA_FILES.siteSettings, 'portfolio_site_settings', loadSiteSettings(), true)
-        ]);
+        // Check if data was recently saved locally (within 5 minutes)
+        // If so, use localStorage directly to avoid overwriting with potentially stale JSON
+        const userDataKey = 'portfolio_user_data';
+        const statsKey = 'portfolio_stats';
+        const settingsKey = 'portfolio_site_settings';
+        
+        const userRecentlySaved = isRecentlySaved(userDataKey, 5);
+        const statsRecentlySaved = isRecentlySaved(statsKey, 5);
+        const settingsRecentlySaved = isRecentlySaved(settingsKey, 5);
+        
+        let freshUserData, freshStats, freshSiteSettings;
+        
+        if (userRecentlySaved) {
+          // Use localStorage if recently saved
+          console.log('📝 Using recently saved localStorage data (avoiding stale JSON)');
+          freshUserData = loadUserData(initialUserData);
+        } else {
+          // Load from JSON files to get latest published data
+          freshUserData = await loadDataFromFile(DATA_FILES.user, userDataKey, initialUserData, true);
+        }
+        
+        if (statsRecentlySaved) {
+          freshStats = loadStats(initialStats);
+        } else {
+          freshStats = await loadDataFromFile(DATA_FILES.stats, statsKey, initialStats, true);
+        }
+        
+        if (settingsRecentlySaved) {
+          freshSiteSettings = loadSiteSettings();
+        } else {
+          freshSiteSettings = await loadDataFromFile(DATA_FILES.siteSettings, settingsKey, loadSiteSettings(), true);
+        }
 
         // Update stats
         setStats(freshStats);

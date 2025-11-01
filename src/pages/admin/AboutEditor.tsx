@@ -14,7 +14,7 @@ import {
   GripVertical
 } from 'lucide-react';
 import { userData as initialUserData, skills as initialSkills, experiences as initialExperiences, achievements as initialAchievements } from '@/lib/data';
-import { saveUserData, saveSkills, saveExperiences, saveAchievements } from '@/lib/storage';
+import { saveUserData, saveSkills, saveExperiences, saveAchievements, isRecentlySaved, loadUserData, loadSkills, loadExperiences, loadAchievements } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
 import { Skill, Experience, Achievement } from '@/types';
 import { toast } from 'sonner';
@@ -28,15 +28,39 @@ const AboutEditor = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    // Load latest data from JSON files first (with force refresh), then fallback to localStorage
+    // Load data - prioritize localStorage if recently saved, otherwise load from JSON files
     const loadLatestData = async () => {
       try {
-        const [freshUserData, freshSkills, freshExperiences, freshAchievements] = await Promise.all([
-          loadDataFromFile(DATA_FILES.user, 'portfolio_user_data', initialUserData, true),
-          loadDataFromFile(DATA_FILES.skills, 'portfolio_skills', initialSkills, true),
-          loadDataFromFile(DATA_FILES.experiences, 'portfolio_experiences', initialExperiences, true),
-          loadDataFromFile(DATA_FILES.achievements, 'portfolio_achievements', initialAchievements, true)
-        ]);
+        const userKey = 'portfolio_user_data';
+        const skillsKey = 'portfolio_skills';
+        const experiencesKey = 'portfolio_experiences';
+        const achievementsKey = 'portfolio_achievements';
+        
+        let freshUserData, freshSkills, freshExperiences, freshAchievements;
+        
+        if (isRecentlySaved(userKey, 5)) {
+          freshUserData = loadUserData(initialUserData);
+        } else {
+          freshUserData = await loadDataFromFile(DATA_FILES.user, userKey, initialUserData, true);
+        }
+        
+        if (isRecentlySaved(skillsKey, 5)) {
+          freshSkills = loadSkills(initialSkills);
+        } else {
+          freshSkills = await loadDataFromFile(DATA_FILES.skills, skillsKey, initialSkills, true);
+        }
+        
+        if (isRecentlySaved(experiencesKey, 5)) {
+          freshExperiences = loadExperiences(initialExperiences);
+        } else {
+          freshExperiences = await loadDataFromFile(DATA_FILES.experiences, experiencesKey, initialExperiences, true);
+        }
+        
+        if (isRecentlySaved(achievementsKey, 5)) {
+          freshAchievements = loadAchievements(initialAchievements);
+        } else {
+          freshAchievements = await loadDataFromFile(DATA_FILES.achievements, achievementsKey, initialAchievements, true);
+        }
 
         if (freshUserData) setBio(freshUserData.bio || initialUserData.bio);
         if (freshSkills) setSkills(freshSkills);

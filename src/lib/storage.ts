@@ -19,10 +19,24 @@ const STORAGE_KEYS = {
 export const saveToStorage = <T>(key: string, data: T): void => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
+    // Store timestamp to track when data was last saved locally
+    localStorage.setItem(`${key}_last_saved`, Date.now().toString());
     // Dispatch event for real-time updates
     window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { detail: { key, data } }));
   } catch (error) {
     console.error('Error saving to storage:', error);
+  }
+};
+
+// Check if localStorage data was recently saved (within 5 minutes)
+export const isRecentlySaved = (key: string, maxAgeMinutes: number = 5): boolean => {
+  try {
+    const lastSaved = localStorage.getItem(`${key}_last_saved`);
+    if (!lastSaved) return false;
+    const age = Date.now() - parseInt(lastSaved, 10);
+    return age < maxAgeMinutes * 60 * 1000; // 5 minutes in milliseconds
+  } catch {
+    return false;
   }
 };
 
