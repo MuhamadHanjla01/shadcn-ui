@@ -17,16 +17,22 @@ export interface GitHubConfig {
 
 /**
  * Get the backend API base URL
+ * Always returns URL without trailing slash to prevent double slashes
  */
 function getApiBaseUrl(): string {
+  let baseUrl: string;
+  
   // In development, use localhost
   if (import.meta.env.DEV) {
-    return import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  } else {
+    // In production, use environment variable or fallback to Railway URL
+    // Get this from Railway dashboard → Settings → Domains
+    baseUrl = import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app';
   }
-  // In production, use environment variable or fallback to Railway URL
-  // Get this from Railway dashboard → Settings → Domains
-  // Note: No trailing slash - API endpoints will be appended
-  return import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app';
+  
+  // Remove trailing slash if present to prevent double slashes in URLs
+  return baseUrl.replace(/\/+$/, '');
 }
 
 /**
@@ -102,7 +108,8 @@ export async function commitFilesToGitHub(
   }
 
   try {
-    const apiUrl = `${getApiBaseUrl()}/api/github/commit-files`;
+    const baseUrl = getApiBaseUrl();
+    const apiUrl = `${baseUrl}/api/github/commit-files`;
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for bulk operations
@@ -223,7 +230,8 @@ export async function testGitHubConnection(): Promise<{ success: boolean; messag
   }
 
   try {
-    const apiUrl = `${getApiBaseUrl()}/api/github/test`;
+    const baseUrl = getApiBaseUrl();
+    const apiUrl = `${baseUrl}/api/github/test`;
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
