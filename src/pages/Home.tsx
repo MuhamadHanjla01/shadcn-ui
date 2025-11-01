@@ -7,6 +7,7 @@ import { Github, Linkedin, Twitter, Mail, Download, ArrowRight, Sparkles } from 
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { loadUserData, loadSiteSettings, loadStats } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
+import { startRealtimeSync } from '@/lib/realtime-sync';
 
 const Home = () => {
   const [userData, setUserData] = useState(initialUserData);
@@ -167,7 +168,28 @@ const Home = () => {
     };
 
     window.addEventListener('portfolioDataUpdated', handleDataUpdate);
-    return () => window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
+    
+    // Start real-time polling for updates (for user devices)
+    const cleanup = startRealtimeSync((updates) => {
+      // Update UI with new data
+      if (updates.user) {
+        setUserData(updates.user);
+        setDisplayText('');
+        setCurrentIndex(0);
+      }
+      if (updates.stats) {
+        setStats(updates.stats);
+      }
+      if (updates.siteSettings) {
+        setHeroLayout((updates.siteSettings.heroLayout as 'left'|'center'|'right') || 'center');
+        setSocialVisibility(updates.siteSettings.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+      }
+    });
+    
+    return () => {
+      window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
+      cleanup();
+    };
   }, []);
 
   // Typing animation effect

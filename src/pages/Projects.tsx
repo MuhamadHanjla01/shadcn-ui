@@ -8,6 +8,7 @@ import { ExternalLink, Github, Star, Filter } from 'lucide-react';
 import { projects as initialProjects } from '@/lib/data';
 import { loadProjects } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
+import { checkForUpdates } from '@/lib/realtime-sync';
 
 const Projects = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -27,7 +28,19 @@ const Projects = () => {
     load();
     const onUpdate = () => load();
     window.addEventListener('portfolioDataUpdated', onUpdate);
-    return () => window.removeEventListener('portfolioDataUpdated', onUpdate);
+    
+    // Poll for project updates every 30 seconds
+    const pollInterval = setInterval(async () => {
+      const updated = await checkForUpdates('projects');
+      if (updated) {
+        setProjectList(updated);
+      }
+    }, 30000);
+    
+    return () => {
+      window.removeEventListener('portfolioDataUpdated', onUpdate);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const categories = ['All', ...Array.from(new Set(projectList.map(p => p.category)))];

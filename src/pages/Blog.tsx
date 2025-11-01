@@ -9,6 +9,7 @@ import { Calendar, Clock, Search, Tag } from 'lucide-react';
 import { blogPosts as initialBlogPosts } from '@/lib/data';
 import { loadBlogPosts } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
+import { checkForUpdates } from '@/lib/realtime-sync';
 
 const Blog = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,7 +29,19 @@ const Blog = () => {
     load();
     const onUpdate = () => load();
     window.addEventListener('portfolioDataUpdated', onUpdate);
-    return () => window.removeEventListener('portfolioDataUpdated', onUpdate);
+    
+    // Poll for blog post updates every 30 seconds
+    const pollInterval = setInterval(async () => {
+      const updated = await checkForUpdates('blogPosts');
+      if (updated) {
+        setPosts(updated);
+      }
+    }, 30000);
+    
+    return () => {
+      window.removeEventListener('portfolioDataUpdated', onUpdate);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const allTags = ['All', ...Array.from(new Set(posts.flatMap(post => post.tags)))];

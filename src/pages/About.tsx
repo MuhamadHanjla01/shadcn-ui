@@ -7,6 +7,7 @@ import { Download, Award, GraduationCap, Briefcase } from 'lucide-react';
 import { userData as initialUserData, skills as initialSkills, experiences as initialExperiences, achievements as initialAchievements } from '@/lib/data';
 import { loadUserData, loadSkills, loadExperiences, loadAchievements, trackPageView } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
+import { checkForUpdates } from '@/lib/realtime-sync';
 
 const About = () => {
   const [userData, setUserData] = useState(initialUserData);
@@ -73,7 +74,35 @@ const About = () => {
     // Listen for updates
     const handleDataUpdate = () => loadData();
     window.addEventListener('portfolioDataUpdated', handleDataUpdate);
-    return () => window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
+    
+    // Poll for updates every 30 seconds
+    const pollInterval = setInterval(async () => {
+      const [updatedSkills, updatedExperiences, updatedAchievements] = await Promise.all([
+        checkForUpdates('skills'),
+        checkForUpdates('experiences'),
+        checkForUpdates('achievements')
+      ]);
+      
+      if (updatedSkills) setSkills(updatedSkills);
+      if (updatedExperiences) setExperiences(updatedExperiences);
+      if (updatedAchievements) setAchievements(updatedAchievements);
+      
+      // Also check user data
+      const freshUserData = await loadDataFromFile(
+        DATA_FILES.user,
+        'portfolio_user_data',
+        initialUserData,
+        false
+      );
+      if (freshUserData && JSON.stringify(freshUserData) !== JSON.stringify(userData)) {
+        setUserData(freshUserData);
+      }
+    }, 30000);
+    
+    return () => {
+      window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const workExperience = experiences.filter(exp => exp.type === 'work');
