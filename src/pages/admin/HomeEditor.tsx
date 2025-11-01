@@ -194,11 +194,14 @@ const HomeEditor = () => {
               description: 'Users will see updates in 1-2 minutes'
             });
             // Trigger a reload from JSON files after a delay to pick up GitHub changes
+            // Note: GitHub Actions rebuild takes 1-2 minutes, so we'll retry multiple times
+            console.log('✅ GitHub sync successful, will trigger frontend reload...');
             setTimeout(() => {
+              console.log('🔄 Dispatching reload event to frontend...');
               window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { 
-                detail: { source: 'github-sync', reload: true } 
+                detail: { source: 'github-sync', reload: true, timestamp: Date.now() } 
               }));
-            }, 3000); // Wait 3 seconds for GitHub to process the commit
+            }, 5000); // Wait 5 seconds initially, then retry
           } else {
             // Only log to console for backend connectivity issues - don't show alarming toast
             console.warn('GitHub sync note:', result.message);

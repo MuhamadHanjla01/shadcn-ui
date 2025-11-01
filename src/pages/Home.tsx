@@ -86,42 +86,68 @@ const Home = () => {
 
     // Listen for updates from admin panel
     const handleDataUpdate = (event?: any) => {
+      console.log('🔄 Data update event received:', event?.detail);
+      
       // If event indicates GitHub sync completed, force refresh from JSON files
       const shouldForceReload = event?.detail?.reload === true;
       
       // Reload data - force refresh from JSON if GitHub sync completed
       if (shouldForceReload) {
-        // Wait a bit for GitHub to process the commit
+        console.log('📥 GitHub sync detected - forcing reload from JSON files...');
+        // Wait a bit for GitHub to process the commit and GitHub Actions to rebuild
         setTimeout(async () => {
-          const freshUserData = await loadDataFromFile(
-            DATA_FILES.user,
-            'portfolio_user_data',
-            initialUserData,
-            true // Force refresh
-          );
-          const freshStats = await loadDataFromFile(
-            DATA_FILES.stats,
-            'portfolio_stats',
-            initialStats,
-            true // Force refresh
-          );
-          setUserData(freshUserData);
-          setStats(freshStats);
+          console.log('🔄 Loading fresh data from JSON files...');
           
-          const freshSettings = await loadDataFromFile(
-            DATA_FILES.siteSettings,
-            'portfolio_site_settings',
-            loadSiteSettings(),
-            true
-          );
-          setHeroLayout((freshSettings.heroLayout as 'left'|'center'|'right') || 'center');
-          setSocialVisibility(freshSettings.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+          // Force reload with multiple attempts (GitHub Actions takes time)
+          const attemptReload = async (attempt: number = 1, maxAttempts: number = 3) => {
+            const freshUserData = await loadDataFromFile(
+              DATA_FILES.user,
+              'portfolio_user_data',
+              initialUserData,
+              true // Force refresh
+            );
+            const freshStats = await loadDataFromFile(
+              DATA_FILES.stats,
+              'portfolio_stats',
+              initialStats,
+              true // Force refresh
+            );
+            
+            console.log(`📊 Reload attempt ${attempt}:`, {
+              name: freshUserData.name,
+              title: freshUserData.title,
+              statsCount: freshStats.length
+            });
+            
+            setUserData(freshUserData);
+            setStats(freshStats);
+            
+            const freshSettings = await loadDataFromFile(
+              DATA_FILES.siteSettings,
+              'portfolio_site_settings',
+              loadSiteSettings(),
+              true
+            );
+            setHeroLayout((freshSettings.heroLayout as 'left'|'center'|'right') || 'center');
+            setSocialVisibility(freshSettings.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+            
+            setDisplayText('');
+            setCurrentIndex(0);
+            
+            // Try again if data seems unchanged (might need more time for GitHub Actions)
+            if (attempt < maxAttempts && freshUserData.name === userData.name) {
+              console.log(`⏳ Data unchanged, retrying in 5 seconds... (${attempt}/${maxAttempts})`);
+              setTimeout(() => attemptReload(attempt + 1, maxAttempts), 5000);
+            } else {
+              console.log('✅ Data reload complete');
+            }
+          };
           
-          setDisplayText('');
-          setCurrentIndex(0);
-        }, 2000); // Wait 2 seconds for GitHub to serve new files
+          attemptReload();
+        }, 5000); // Wait 5 seconds for GitHub Actions to start building
       } else {
         // Normal reload from localStorage or JSON
+        console.log('📥 Normal data reload...');
         loadData();
         setDisplayText('');
         setCurrentIndex(0);

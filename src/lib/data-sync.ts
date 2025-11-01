@@ -75,7 +75,11 @@ export async function loadDataFromFile<T>(
       if (typeof window !== 'undefined') {
         localStorage.setItem(localStorageKey, JSON.stringify(data));
       }
-      console.log(`✅ Loaded ${filePath} from shared JSON file`);
+      console.log(`✅ Loaded ${filePath} from shared JSON file`, {
+        timestamp: new Date().toISOString(),
+        forceRefresh: forceRefresh,
+        dataPreview: typeof data === 'object' ? Object.keys(data).slice(0, 5) : 'N/A'
+      });
       return data;
     } else if (response.status === 404) {
       console.log(`📝 ${filePath} not found (404) - JSON files not created yet. Using localStorage fallback.`);
