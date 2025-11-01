@@ -171,7 +171,10 @@ export const loadThemeSettings = async (): Promise<ThemeSettings> => {
 
   try {
     // Try to load from public/theme.json first (for GitHub Pages deployment)
-    const response = await fetch('/theme.json', { 
+    // Use base path for GitHub Pages subdirectory
+    const BASE_PATH = import.meta.env.BASE_URL || '/shadcn-ui/';
+    const themePath = `${BASE_PATH.replace(/\/$/, '')}/theme.json`;
+    const response = await fetch(themePath, { 
       cache: 'no-store'
     });
     if (response.ok) {
