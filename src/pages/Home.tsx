@@ -7,7 +7,7 @@ import { Github, Linkedin, Twitter, Mail, Download, ArrowRight, Sparkles } from 
 import { userData as initialUserData, stats as initialStats } from '@/lib/data';
 import { loadUserData, loadSiteSettings, loadStats } from '@/lib/storage';
 import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
-import { startRealtimeSync } from '@/lib/realtime-sync';
+import { startRealtimeSync, initializeDataHash } from '@/lib/realtime-sync';
 
 const Home = () => {
   const [userData, setUserData] = useState(initialUserData);
@@ -61,6 +61,10 @@ const Home = () => {
       setUserData(userData);
       setStats(stats);
       
+      // Initialize hashes for real-time sync (so we can detect changes later)
+      initializeDataHash('user', userData);
+      initializeDataHash('stats', stats);
+      
       // Load site settings (also try JSON first)
       const ss = await loadDataFromFile(
         DATA_FILES.siteSettings,
@@ -70,6 +74,9 @@ const Home = () => {
       
       setHeroLayout((ss.heroLayout as 'left'|'center'|'right') || 'center');
       setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+      
+      // Initialize hash for site settings
+      initializeDataHash('siteSettings', ss);
       
       // Debug: Log what data was loaded
       if (import.meta.env.DEV) {

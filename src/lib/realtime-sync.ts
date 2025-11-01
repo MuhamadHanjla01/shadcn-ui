@@ -18,6 +18,19 @@ const lastDataVersions: Map<string, string> = new Map();
 const hasInitialPolled: Map<string, boolean> = new Map();
 
 /**
+ * Initialize hash from initial data load (called from page components)
+ * This ensures we have a baseline to compare against when polling starts
+ */
+export function initializeDataHash(key: string, data: any): void {
+  if (!data) return;
+  const hash = getDataHash(data);
+  if (!lastDataVersions.has(key)) {
+    lastDataVersions.set(key, hash);
+    console.log(`📋 Initialized hash for ${key} from page load:`, hash.substring(0, 10) + '...');
+  }
+}
+
+/**
  * Gets a hash of data for change detection (without timestamps)
  */
 function getDataHash(data: any): string {
