@@ -658,7 +658,10 @@ app.get('/api/data/:type', async (req, res) => {
   try {
     const { type } = req.params;
     
+    console.log(`📥 GET /api/data/${type} request from:`, req.headers.origin || 'unknown origin');
+    
     if (!DATA_FILE_MAP[type]) {
+      console.error(`❌ Invalid data type requested: ${type}`);
       return res.status(400).json({
         success: false,
         message: `Invalid data type: ${type}. Valid types: ${Object.keys(DATA_FILE_MAP).join(', ')}`
@@ -666,11 +669,13 @@ app.get('/api/data/:type', async (req, res) => {
     }
     
     const filePath = getDataFilePath(type);
+    console.log(`📂 Reading data from: ${filePath}`);
     
     try {
       const fileContent = await fs.readFile(filePath, 'utf8');
       const data = JSON.parse(fileContent);
       
+      console.log(`✅ Successfully loaded ${type} data`);
       res.json({
         success: true,
         data: data,
@@ -679,6 +684,7 @@ app.get('/api/data/:type', async (req, res) => {
     } catch (fileError) {
       if (fileError.code === 'ENOENT') {
         // File doesn't exist yet - return empty/default data
+        console.log(`📝 File not found for ${type}, returning null`);
         res.json({
           success: true,
           data: null,
@@ -686,11 +692,12 @@ app.get('/api/data/:type', async (req, res) => {
           timestamp: new Date().toISOString()
         });
       } else {
+        console.error(`❌ Error reading file for ${type}:`, fileError);
         throw fileError;
       }
     }
   } catch (error) {
-    console.error('Error getting data:', error);
+    console.error('❌ Error getting data:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to get data'

@@ -102,7 +102,15 @@ export function startRealtimeSync(callback: (updates: {
 
   const pollForUpdates = async (isInitialPoll: boolean = false) => {
     try {
-      console.log('🔍 Polling for updates from backend API...', new Date().toLocaleTimeString());
+      const baseUrl = typeof window !== 'undefined' 
+        ? (import.meta.env.DEV ? 'http://localhost:3001' : import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app')
+        : '';
+      
+      console.log('🔍 Polling for updates from backend API...', {
+        time: new Date().toLocaleTimeString(),
+        backendUrl: baseUrl,
+        isDev: import.meta.env.DEV
+      });
       
       // Load from backend API (direct connection - faster than JSON files!)
       const [freshUserData, freshStats, freshSiteSettings] = await Promise.all([
@@ -112,11 +120,16 @@ export function startRealtimeSync(callback: (updates: {
       ]);
 
       // Debug: Log what we fetched
-      console.log('📥 Fetched data:', {
-        user: freshUserData ? `✅ ${freshUserData.name || 'Unknown'}` : '❌',
-        stats: freshStats ? `✅ ${freshStats.length} items` : '❌',
-        settings: freshSiteSettings ? '✅' : '❌'
+      console.log('📥 Fetched data from backend:', {
+        user: freshUserData ? `✅ ${freshUserData.name || 'Unknown'}` : '❌ null',
+        stats: freshStats ? `✅ ${freshStats.length} items` : '❌ null',
+        settings: freshSiteSettings ? '✅ Loaded' : '❌ null'
       });
+      
+      // If all are null, backend might not be accessible
+      if (!freshUserData && !freshStats && !freshSiteSettings) {
+        console.warn('⚠️ All backend requests returned null - backend might be down or unreachable');
+      }
 
       // Check for changes
       const updates: any = {};

@@ -31,7 +31,11 @@ export type DataType = 'user' | 'stats' | 'skills' | 'experiences' | 'achievemen
 export async function getDataFromBackend<T>(type: DataType): Promise<T | null> {
   try {
     const baseUrl = getApiBaseUrl();
-    const response = await fetch(`${baseUrl}/api/data/${type}`, {
+    const url = `${baseUrl}/api/data/${type}`;
+    
+    console.log(`🔗 Attempting to fetch ${type} from: ${url}`);
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -39,24 +43,35 @@ export async function getDataFromBackend<T>(type: DataType): Promise<T | null> {
       cache: 'no-store'
     });
 
+    console.log(`📡 Response status for ${type}:`, response.status, response.statusText);
+
     if (!response.ok) {
       if (response.status === 404) {
-        console.log(`📝 ${type} data not found in backend, returning null`);
+        console.log(`📝 ${type} data not found in backend (404), returning null`);
         return null;
       }
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.error(`❌ Backend API error for ${type}:`, response.status, errorText);
       throw new Error(`Backend API returned ${response.status}: ${response.statusText}`);
     }
 
     const result = await response.json();
+    console.log(`📦 Response data for ${type}:`, result.success ? '✅ Success' : '❌ Failed', result);
     
     if (result.success && result.data !== null) {
       console.log(`✅ Loaded ${type} from backend API`);
       return result.data as T;
     }
     
+    console.log(`⚠️ ${type} data is null or result.success is false`);
     return null;
   } catch (error: any) {
-    console.warn(`⚠️ Failed to load ${type} from backend:`, error.message);
+    console.error(`❌ Failed to load ${type} from backend:`, {
+      message: error.message,
+      url: `${getApiBaseUrl()}/api/data/${type}`,
+      error: error.name,
+      stack: error.stack
+    });
     return null;
   }
 }
