@@ -512,8 +512,34 @@ app.post('/api/github/commit-files', async (req, res) => {
 app.all('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: `API route not found: ${req.method} ${req.path}`
+    message: `API route not found: ${req.method} ${req.path}`,
+    availableEndpoints: {
+      health: 'GET /api/health',
+      githubTest: 'POST /api/github/test',
+      githubCommitFile: 'POST /api/github/commit-file',
+      githubCommitFiles: 'POST /api/github/commit-files'
+    }
   });
+});
+
+// 404 handler for all other routes (non-API)
+app.all('*', (req, res) => {
+  // Only handle if not already handled by API routes
+  if (!req.path.startsWith('/api')) {
+    res.status(404).json({
+      success: false,
+      message: `Route not found: ${req.method} ${req.path}`,
+      info: 'This is the backend API server. Available endpoints are under /api',
+      availableEndpoints: {
+        root: 'GET /',
+        health: 'GET /api/health',
+        githubTest: 'POST /api/github/test',
+        githubCommitFile: 'POST /api/github/commit-file',
+        githubCommitFiles: 'POST /api/github/commit-files'
+      },
+      frontend: 'Frontend is hosted at https://MuhamadHanjla01.github.io/shadcn-ui'
+    });
+  }
 });
 
 // Note: Static file serving removed - Railway only deploys the backend API
