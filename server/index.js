@@ -218,13 +218,31 @@ app.get('/', (req, res) => {
     message: 'Portfolio Backend API is running',
     endpoints: {
       health: '/api/health',
-      githubTest: '/api/github/test',
-      githubCommitFile: '/api/github/commit-file',
-      githubCommitFiles: '/api/github/commit-files'
+      githubTest: '/api/github/test (POST)',
+      githubCommitFile: '/api/github/commit-file (POST)',
+      githubCommitFiles: '/api/github/commit-files (POST)'
     },
     documentation: 'This is the backend API for GitHub sync functionality'
   });
 });
+
+// Debug route to list all routes (development only)
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/debug/routes', (req, res) => {
+    res.json({
+      message: 'Available routes',
+      routes: [
+        'GET /',
+        'GET /api/health',
+        'OPTIONS /api/health',
+        'POST /api/github/test',
+        'OPTIONS /api/github/test',
+        'POST /api/github/commit-file',
+        'POST /api/github/commit-files'
+      ]
+    });
+  });
+}
 
 // Health check - allow GET and OPTIONS
 app.get('/api/health', (req, res) => {
