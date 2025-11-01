@@ -50,38 +50,42 @@ const AboutEditor = () => {
       saveExperiences(experiences);
       saveAchievements(achievements);
       
-      // Auto-commit to GitHub if enabled
+      // Auto-commit to GitHub if enabled (non-blocking)
       const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
       if (isGitHubSyncConfigured()) {
-        try {
-          const result = await exportAndCommitToGitHub(
-            {
-              'user': updatedUserData,
-              'skills': skills,
-              'experiences': experiences,
-              'achievements': achievements
-            },
-            'Update about page data (automatic sync)'
-          );
-          
+        // Run GitHub sync in background without blocking save operation
+        exportAndCommitToGitHub(
+          {
+            'user': updatedUserData,
+            'skills': skills,
+            'experiences': experiences,
+            'achievements': achievements
+          },
+          'Update about page data (automatic sync)'
+        ).then((result) => {
           if (result.success) {
             toast.success('Changes saved and published!', {
               description: 'Users will see updates in 1-2 minutes'
             });
           } else {
-            toast.warning('Saved locally, but GitHub sync failed', {
-              description: result.message
-            });
+            console.warn('GitHub sync note:', result.message);
+            if (!result.message.includes('Cannot connect to backend API') && 
+                !result.message.includes('backend server is running')) {
+              toast.warning('Saved locally. GitHub sync unavailable', {
+                description: 'Data saved successfully. Start backend server to enable auto-sync.'
+              });
+            }
           }
-        } catch (error: any) {
-          console.error('GitHub sync error:', error);
-          toast.error('Failed to publish to GitHub', {
-            description: error.message || 'Unknown error'
-          });
-        }
+        }).catch((error: any) => {
+          console.warn('GitHub sync error (non-blocking):', error.message || 'Unknown error');
+        });
+        
+        toast.success('Changes saved successfully!', {
+          description: 'Syncing to GitHub in background...'
+        });
       } else {
         toast.success('Saved locally!', {
-          description: 'Enable GitHub Auto-Sync to publish changes'
+          description: 'Enable GitHub Auto-Sync in Settings to publish changes'
         });
       }
       

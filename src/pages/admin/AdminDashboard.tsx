@@ -233,15 +233,30 @@ const AdminDashboard = () => {
           duration: 5000
         });
       } else {
-        toast.error('Failed to publish data', {
-          description: result.message
-        });
+        // Check if it's a backend connectivity issue
+        if (result.message.includes('Cannot connect to backend API') || 
+            result.message.includes('backend server is running')) {
+          toast.error('Backend server not running', {
+            description: 'Please start the backend server: npm run dev:server',
+            duration: 6000
+          });
+        } else {
+          toast.error('Failed to publish data', {
+            description: result.message
+          });
+        }
       }
     } catch (error: any) {
       console.error('Publish error:', error);
-      toast.error('Failed to publish data', {
-        description: error.message || 'Unknown error'
-      });
+      if (error.message?.includes('Failed to fetch') || error instanceof TypeError) {
+        toast.error('Cannot connect to backend', {
+          description: 'Please ensure the backend server is running on port 3001. Run: npm run dev:server'
+        });
+      } else {
+        toast.error('Failed to publish data', {
+          description: error.message || 'Unknown error'
+        });
+      }
     } finally {
       setIsPublishing(false);
     }

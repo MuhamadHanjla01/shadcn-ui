@@ -26,7 +26,7 @@ function getApiBaseUrl(): string {
   // In production, use environment variable or fallback to Railway URL
   // TODO: Replace with your Railway backend URL after deployment
   // Get this from Railway dashboard → Settings → Domains
-  return import.meta.env.VITE_API_URL || 'https://your-railway-app.up.railway.app';
+  return import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app/';
 }
 
 /**
