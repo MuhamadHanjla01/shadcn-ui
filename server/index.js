@@ -209,6 +209,96 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
+// POST save all (with real-time broadcast) - MUST be before /api/data/:type
+app.post('/api/data/save-all', async (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  try {
+    const { data } = req.body;
+    
+    if (!data || typeof data !== 'object') {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing or invalid data object'
+      });
+    }
+    
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    
+    const results = {};
+    const errors = {};
+    
+    // Save each data type
+    for (const [type, content] of Object.entries(data)) {
+      if (DATA_FILES[type]) {
+        try {
+          const filePath = getDataFilePath(type);
+          let fileContent;
+          
+          try {
+            fileContent = JSON.stringify(content, null, 2);
+          } catch (stringifyError) {
+            throw new Error(`Invalid JSON for ${type}`);
+          }
+          
+          // Atomic write
+          const tempPath = `${filePath}.tmp`;
+          try {
+            await fs.writeFile(tempPath, fileContent, 'utf8');
+            await fs.rename(tempPath, filePath);
+            results[type] = 'saved';
+            
+            // Broadcast each update
+            broadcastUpdate(type, content);
+            
+            console.log(`✅ Saved ${type} data`);
+          } catch (writeError) {
+            try {
+              await fs.unlink(tempPath);
+            } catch (e) {
+              // Ignore
+            }
+            throw writeError;
+          }
+        } catch (error) {
+          errors[type] = error.message;
+          console.error(`❌ Error saving ${type}:`, error.message);
+        }
+      }
+    }
+    
+    const successCount = Object.keys(results).length;
+    const errorCount = Object.keys(errors).length;
+    
+    if (errorCount > 0) {
+      res.status(207).json({
+        success: false,
+        message: `Saved ${successCount} file(s), ${errorCount} error(s)`,
+        results: results,
+        errors: errors,
+        broadcast: clients.size > 0,
+        clients: clients.size
+      });
+    } else {
+      res.json({
+        success: true,
+        message: `Successfully saved ${successCount} file(s)`,
+        results: results,
+        broadcast: clients.size > 0,
+        clients: clients.size,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error saving all data:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to save data'
+    });
+  }
+});
+
 // GET data
 app.get('/api/data/:type', async (req, res) => {
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
@@ -329,96 +419,6 @@ app.post('/api/data/:type', async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Error saving data:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to save data'
-    });
-  }
-});
-
-// POST save all (with real-time broadcast)
-app.post('/api/data/save-all', async (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  try {
-    const { data } = req.body;
-    
-    if (!data || typeof data !== 'object') {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing or invalid data object'
-      });
-    }
-    
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    
-    const results = {};
-    const errors = {};
-    
-    // Save each data type
-    for (const [type, content] of Object.entries(data)) {
-      if (DATA_FILES[type]) {
-        try {
-          const filePath = getDataFilePath(type);
-          let fileContent;
-          
-          try {
-            fileContent = JSON.stringify(content, null, 2);
-          } catch (stringifyError) {
-            throw new Error(`Invalid JSON for ${type}`);
-          }
-          
-          // Atomic write
-          const tempPath = `${filePath}.tmp`;
-          try {
-            await fs.writeFile(tempPath, fileContent, 'utf8');
-            await fs.rename(tempPath, filePath);
-            results[type] = 'saved';
-            
-            // Broadcast each update
-            broadcastUpdate(type, content);
-            
-            console.log(`✅ Saved ${type} data`);
-          } catch (writeError) {
-            try {
-              await fs.unlink(tempPath);
-            } catch (e) {
-              // Ignore
-            }
-            throw writeError;
-          }
-        } catch (error) {
-          errors[type] = error.message;
-          console.error(`❌ Error saving ${type}:`, error.message);
-        }
-      }
-    }
-    
-    const successCount = Object.keys(results).length;
-    const errorCount = Object.keys(errors).length;
-    
-    if (errorCount > 0) {
-      res.status(207).json({
-        success: false,
-        message: `Saved ${successCount} file(s), ${errorCount} error(s)`,
-        results: results,
-        errors: errors,
-        broadcast: clients.size > 0,
-        clients: clients.size
-      });
-    } else {
-      res.json({
-        success: true,
-        message: `Successfully saved ${successCount} file(s)`,
-        results: results,
-        broadcast: clients.size > 0,
-        clients: clients.size,
-        timestamp: new Date().toISOString()
-      });
-    }
-  } catch (error) {
-    console.error('❌ Error saving all data:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to save data'
