@@ -105,11 +105,17 @@ function connectWebSocket(callback: (updates: any) => void): () => void {
         if (message.type === 'connected') {
           console.log('🎉 Real-time sync ready:', message.message);
         } else if (message.type === 'update') {
-          console.log('📡 Real-time update received:', message.dataType);
+          console.log('📡 Real-time update received:', message.dataType, '- Timestamp:', message.timestamp);
+          
+          // IMPORTANT: Clear the hash for this data type to ensure fresh data is detected
+          // This prevents stale/cached data from being used
+          const dataType = message.dataType;
+          lastDataVersions.delete(dataType);
+          hasInitialPolled.delete(dataType);
+          console.log('🧼 Cleared cache for:', dataType);
           
           // Map backend data types to frontend
           const updates: any = {};
-          const dataType = message.dataType;
           
           if (dataType === 'user') updates.user = message.data;
           else if (dataType === 'stats') updates.stats = message.data;
@@ -121,7 +127,14 @@ function connectWebSocket(callback: (updates: any) => void): () => void {
           else if (dataType === 'achievements') updates.achievements = message.data;
           
           if (Object.keys(updates).length > 0) {
-            console.log('🔄 Applying real-time update:', updates);
+            console.log('🔄 Applying fresh real-time update:', updates);
+            // Update hash with new data
+            if (message.data) {
+              const newHash = getDataHash(message.data);
+              lastDataVersions.set(dataType, newHash);
+              hasInitialPolled.set(dataType, true);
+              console.log(`✅ Updated hash for ${dataType}:`, newHash.substring(0, 10) + '...');
+            }
             callback(updates);
           }
         }
