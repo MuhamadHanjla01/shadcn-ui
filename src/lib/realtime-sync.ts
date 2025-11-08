@@ -1,7 +1,7 @@
 /**
  * Real-time Sync Service for User Devices
  * 
- * This service automatically polls JSON files for updates
+ * This service automatically polls backend API for updates
  * so users see changes without manual refresh
  */
 
@@ -17,6 +17,10 @@ const lastDataVersions: Map<string, string> = new Map();
 
 // Track if we've done an initial poll (to avoid false positives)
 const hasInitialPolled: Map<string, boolean> = new Map();
+
+// Track active polling to prevent multiple polls
+let isPolling = false;
+let pollQueue: Promise<void> | null = null;
 
 /**
  * Initialize hash from initial data load (called from page components)
@@ -101,6 +105,14 @@ export function startRealtimeSync(callback: (updates: {
   console.log('🔄 Starting real-time sync - polling backend API every 5 seconds for updates');
 
   const pollForUpdates = async (isInitialPoll: boolean = false) => {
+    // Prevent concurrent polling
+    if (isPolling) {
+      console.log('⏸️ Skipping poll - another poll is in progress');
+      return;
+    }
+    
+    isPolling = true;
+    
     try {
       const baseUrl = typeof window !== 'undefined' 
         ? (import.meta.env.DEV ? 'http://localhost:3001' : import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app')
@@ -109,25 +121,31 @@ export function startRealtimeSync(callback: (updates: {
       console.log('🔍 Polling for updates from backend API...', {
         time: new Date().toLocaleTimeString(),
         backendUrl: baseUrl,
-        isDev: import.meta.env.DEV
+        isDev: import.meta.env.DEV,
+        isInitial: isInitialPoll
       });
       
       // Load from backend API (direct connection - faster than JSON files!)
-      const [freshUserData, freshStats, freshSiteSettings] = await Promise.all([
+      // Use Promise.allSettled to handle individual failures gracefully
+      const results = await Promise.allSettled([
         getDataFromBackend('user'),
         getDataFromBackend('stats'),
         getDataFromBackend('site-settings')
       ]);
+      
+      const freshUserData = results[0].status === 'fulfilled' ? results[0].value : null;
+      const freshStats = results[1].status === 'fulfilled' ? results[1].value : null;
+      const freshSiteSettings = results[2].status === 'fulfilled' ? results[2].value : null;
 
       // Debug: Log what we fetched
       console.log('📥 Fetched data from backend:', {
-        user: freshUserData ? `✅ ${freshUserData.name || 'Unknown'}` : '❌ null',
-        stats: freshStats ? `✅ ${freshStats.length} items` : '❌ null',
+        user: freshUserData ? `✅ ${(freshUserData as any).name || 'Unknown'}` : '❌ null',
+        stats: freshStats ? `✅ ${(freshStats as any).length} items` : '❌ null',
         settings: freshSiteSettings ? '✅ Loaded' : '❌ null'
       });
       
-      // If all are null, backend might not be accessible
-      if (!freshUserData && !freshStats && !freshSiteSettings) {
+      // If all are null and it's not the initial poll, backend might not be accessible
+      if (!freshUserData && !freshStats && !freshSiteSettings && !isInitialPoll) {
         console.warn('⚠️ All backend requests returned null - backend might be down or unreachable');
       }
 
@@ -142,8 +160,8 @@ export function startRealtimeSync(callback: (updates: {
           updates.user = freshUserData;
           hasUpdates = true;
           console.log('🔄 User data updated:', {
-            name: freshUserData.name,
-            title: freshUserData.title
+            name: (freshUserData as any).name,
+            title: (freshUserData as any).title
           });
         }
       }
@@ -154,7 +172,7 @@ export function startRealtimeSync(callback: (updates: {
         if (statsChanged) {
           updates.stats = freshStats;
           hasUpdates = true;
-          console.log('🔄 Stats updated:', { count: freshStats.length });
+          console.log('🔄 Stats updated:', { count: (freshStats as any).length });
         }
       }
 
@@ -176,8 +194,10 @@ export function startRealtimeSync(callback: (updates: {
         console.log('⏸️ No updates detected this poll');
       }
     } catch (error) {
-      // Log errors for debugging
+      // Log errors for debugging but don't throw
       console.error('❌ Real-time sync error:', error);
+    } finally {
+      isPolling = false;
     }
   };
 
@@ -192,17 +212,26 @@ export function startRealtimeSync(callback: (updates: {
   
   setTimeout(initialPoll, 5000); // Wait 5 seconds after page load
   
-  const intervalId = setInterval(() => pollForUpdates(false), POLL_INTERVAL);
+  const intervalId = setInterval(() => {
+    // Only start new poll if previous one is done
+    if (!isPolling) {
+      pollForUpdates(false);
+    } else {
+      console.log('⏸️ Skipping scheduled poll - previous poll still running');
+    }
+  }, POLL_INTERVAL);
 
   // Return cleanup function
   return () => {
     clearInterval(intervalId);
+    isPolling = false;
     console.log('🛑 Stopped real-time sync');
   };
 }
 
 /**
  * Quick check for specific data types (used by individual pages)
+ * Prevents duplicate polling and race conditions
  */
 export async function checkForUpdates(dataType: 'projects' | 'blogPosts' | 'skills' | 'experiences' | 'achievements' | 'user') {
   // Map frontend names to backend API names
@@ -221,15 +250,20 @@ export async function checkForUpdates(dataType: 'projects' | 'blogPosts' | 'skil
     // Use backend API for direct, fast updates
     const freshData = await getDataFromBackend(backendType as any);
 
+    if (!freshData) {
+      return null; // No data available
+    }
+
     // Always check if we've polled before - if not, this is initialization
     const hasPolled = hasInitialPolled.get(dataType) || false;
-    if (freshData && hasDataChanged(dataType, freshData, !hasPolled)) {
+    if (hasDataChanged(dataType, freshData, !hasPolled)) {
       console.log(`🔄 ${dataType} updated from backend`);
       return freshData;
     }
 
     return null; // No changes
   } catch (error) {
+    console.error(`❌ Error checking for ${dataType} updates:`, error);
     return null;
   }
 }

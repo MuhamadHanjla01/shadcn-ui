@@ -5,6 +5,43 @@
  * This replaces GitHub sync for faster, real-time updates
  */
 
+// Request timeout in milliseconds
+const REQUEST_TIMEOUT = 10000; // 10 seconds
+
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+/**
+ * Sleep utility for retries
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetch with timeout
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout: number = REQUEST_TIMEOUT): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - backend took too long to respond');
+    }
+    throw error;
+  }
+}
+
 /**
  * Get the backend API base URL
  */
@@ -26,19 +63,21 @@ function getApiBaseUrl(): string {
 export type DataType = 'user' | 'stats' | 'skills' | 'experiences' | 'achievements' | 'projects' | 'blog-posts' | 'site-settings';
 
 /**
- * Get portfolio data from backend API
+ * Get portfolio data from backend API with retry logic
  */
-export async function getDataFromBackend<T>(type: DataType): Promise<T | null> {
+export async function getDataFromBackend<T>(type: DataType, retryCount: number = 0): Promise<T | null> {
   try {
     const baseUrl = getApiBaseUrl();
     const url = `${baseUrl}/api/data/${type}`;
     
-    console.log(`🔗 Attempting to fetch ${type} from: ${url}`);
+    console.log(`🔗 Attempting to fetch ${type} from: ${url} (attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
     
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
       },
       cache: 'no-store'
     });
@@ -50,6 +89,14 @@ export async function getDataFromBackend<T>(type: DataType): Promise<T | null> {
         console.log(`📝 ${type} data not found in backend (404), returning null`);
         return null;
       }
+      
+      // Retry on 5xx server errors
+      if (response.status >= 500 && retryCount < MAX_RETRIES) {
+        console.log(`⚠️ Server error for ${type}, retrying in ${RETRY_DELAY}ms...`);
+        await sleep(RETRY_DELAY * (retryCount + 1));
+        return getDataFromBackend<T>(type, retryCount + 1);
+      }
+      
       const errorText = await response.text().catch(() => 'Unknown error');
       console.error(`❌ Backend API error for ${type}:`, response.status, errorText);
       throw new Error(`Backend API returned ${response.status}: ${response.statusText}`);
@@ -66,23 +113,32 @@ export async function getDataFromBackend<T>(type: DataType): Promise<T | null> {
     console.log(`⚠️ ${type} data is null or result.success is false`);
     return null;
   } catch (error: any) {
+    // Retry on network errors
+    if (retryCount < MAX_RETRIES && (error.message?.includes('Failed to fetch') || error.message?.includes('timeout') || error instanceof TypeError)) {
+      console.log(`⚠️ Network error for ${type}, retrying in ${RETRY_DELAY}ms...`);
+      await sleep(RETRY_DELAY * (retryCount + 1));
+      return getDataFromBackend<T>(type, retryCount + 1);
+    }
+    
     console.error(`❌ Failed to load ${type} from backend:`, {
       message: error.message,
       url: `${getApiBaseUrl()}/api/data/${type}`,
       error: error.name,
-      stack: error.stack
+      retries: retryCount
     });
     return null;
   }
 }
 
 /**
- * Save portfolio data to backend API
+ * Save portfolio data to backend API with retry logic
  */
-export async function saveDataToBackend<T>(type: DataType, data: T): Promise<{ success: boolean; message: string }> {
+export async function saveDataToBackend<T>(type: DataType, data: T, retryCount: number = 0): Promise<{ success: boolean; message: string }> {
   try {
     const baseUrl = getApiBaseUrl();
-    const response = await fetch(`${baseUrl}/api/data/${type}`, {
+    console.log(`💾 Saving ${type} to backend (attempt ${retryCount + 1}/${MAX_RETRIES + 1})...`);
+    
+    const response = await fetchWithTimeout(`${baseUrl}/api/data/${type}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -91,6 +147,13 @@ export async function saveDataToBackend<T>(type: DataType, data: T): Promise<{ s
     });
 
     if (!response.ok) {
+      // Retry on 5xx server errors
+      if (response.status >= 500 && retryCount < MAX_RETRIES) {
+        console.log(`⚠️ Server error saving ${type}, retrying in ${RETRY_DELAY}ms...`);
+        await sleep(RETRY_DELAY * (retryCount + 1));
+        return saveDataToBackend<T>(type, data, retryCount + 1);
+      }
+      
       let errorMessage = 'Failed to save data';
       try {
         const error = await response.json();
@@ -106,11 +169,20 @@ export async function saveDataToBackend<T>(type: DataType, data: T): Promise<{ s
     }
 
     const result = await response.json();
+    console.log(`✅ Saved ${type} to backend successfully`);
     return {
       success: result.success !== false,
       message: result.message || `${type} data saved successfully`
     };
   } catch (error: any) {
+    // Retry on network errors
+    if (retryCount < MAX_RETRIES && (error.message?.includes('Failed to fetch') || error.message?.includes('timeout') || error instanceof TypeError)) {
+      console.log(`⚠️ Network error saving ${type}, retrying in ${RETRY_DELAY}ms...`);
+      await sleep(RETRY_DELAY * (retryCount + 1));
+      return saveDataToBackend<T>(type, data, retryCount + 1);
+    }
+    
+    console.error(`❌ Failed to save ${type}:`, error.message);
     return {
       success: false,
       message: error.message || 'Failed to save data to backend'
@@ -119,12 +191,14 @@ export async function saveDataToBackend<T>(type: DataType, data: T): Promise<{ s
 }
 
 /**
- * Save multiple data types to backend at once
+ * Save multiple data types to backend at once with retry logic
  */
-export async function saveAllDataToBackend(data: Record<string, any>): Promise<{ success: boolean; message: string }> {
+export async function saveAllDataToBackend(data: Record<string, any>, retryCount: number = 0): Promise<{ success: boolean; message: string }> {
   try {
     const baseUrl = getApiBaseUrl();
-    const response = await fetch(`${baseUrl}/api/data/save-all`, {
+    console.log(`💾 Saving all data to backend (attempt ${retryCount + 1}/${MAX_RETRIES + 1})...`);
+    
+    const response = await fetchWithTimeout(`${baseUrl}/api/data/save-all`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -133,6 +207,13 @@ export async function saveAllDataToBackend(data: Record<string, any>): Promise<{
     });
 
     if (!response.ok) {
+      // Retry on 5xx server errors
+      if (response.status >= 500 && retryCount < MAX_RETRIES) {
+        console.log(`⚠️ Server error saving all data, retrying in ${RETRY_DELAY}ms...`);
+        await sleep(RETRY_DELAY * (retryCount + 1));
+        return saveAllDataToBackend(data, retryCount + 1);
+      }
+      
       let errorMessage = 'Failed to save data';
       try {
         const error = await response.json();
@@ -148,11 +229,20 @@ export async function saveAllDataToBackend(data: Record<string, any>): Promise<{
     }
 
     const result = await response.json();
+    console.log('✅ Saved all data to backend successfully');
     return {
       success: result.success !== false,
       message: result.message || 'Data saved successfully'
     };
   } catch (error: any) {
+    // Retry on network errors
+    if (retryCount < MAX_RETRIES && (error.message?.includes('Failed to fetch') || error.message?.includes('timeout') || error instanceof TypeError)) {
+      console.log(`⚠️ Network error saving all data, retrying in ${RETRY_DELAY}ms...`);
+      await sleep(RETRY_DELAY * (retryCount + 1));
+      return saveAllDataToBackend(data, retryCount + 1);
+    }
+    
+    console.error('❌ Failed to save all data:', error.message);
     return {
       success: false,
       message: error.message || 'Failed to save data to backend'
@@ -166,12 +256,15 @@ export async function saveAllDataToBackend(data: Record<string, any>): Promise<{
 export async function testBackendConnection(): Promise<{ success: boolean; message: string }> {
   try {
     const baseUrl = getApiBaseUrl();
-    const response = await fetch(`${baseUrl}/api/health`, {
+    console.log('🔌 Testing backend connection to:', baseUrl);
+    
+    const response = await fetchWithTimeout(`${baseUrl}/api/health`, {
       method: 'GET',
       cache: 'no-store'
-    });
+    }, 5000); // 5 second timeout for health check
 
     if (response.ok) {
+      console.log('✅ Backend API connection successful');
       return {
         success: true,
         message: 'Backend API is connected and running!'
@@ -183,6 +276,12 @@ export async function testBackendConnection(): Promise<{ success: boolean; messa
       };
     }
   } catch (error: any) {
+    if (error.message?.includes('timeout')) {
+      return {
+        success: false,
+        message: 'Backend API connection timeout. Please check if the server is running.'
+      };
+    }
     if (error.message?.includes('Failed to fetch') || error instanceof TypeError) {
       return {
         success: false,
