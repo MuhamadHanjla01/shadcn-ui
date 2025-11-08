@@ -360,90 +360,23 @@ const HomeEditor = () => {
       });
       
       if (saveResult.success) {
-        toast.success('Changes saved to backend!', {
-          description: 'Users will see updates in real-time'
+        toast.success('Changes saved successfully!', {
+          description: 'Users will see updates in real-time via WebSocket'
         });
         
         // Trigger frontend update event
         window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { 
           detail: { source: 'backend-api', reload: true, timestamp: Date.now() } 
         }));
+        
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 3000);
       } else {
         toast.error('Failed to save to backend', {
           description: saveResult.message
         });
+        setSaveStatus('error');
       }
-      
-      // Force update the form immediately with saved data (real-time update)
-      setHomeData(prev => ({
-        ...prev,
-        name: dataToSave.name,
-        title: dataToSave.title,
-        tagline: dataToSave.tagline,
-        profileImage: dataToSave.profileImage,
-        resume: dataToSave.resume,
-        socialMedia: dataToSave.socialMedia
-      }));
-      
-      // Optional: Also sync to GitHub if configured (for backup/redundancy)
-      const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
-      if (isGitHubSyncConfigured()) {
-        // Run GitHub sync in background without blocking save operation
-        exportAndCommitToGitHub(
-          {
-            'user': {
-              ...dataToSave,
-              bio: dataToSave.bio || initialUserData.bio,
-            },
-            'stats': stats,
-            'site-settings': updatedSettings
-          },
-          'Update home data (automatic sync)'
-        ).then((result) => {
-          if (result.success) {
-            toast.success('Changes saved and published!', {
-              description: 'Users will see updates in 1-2 minutes'
-            });
-            // Trigger a reload from JSON files after a delay to pick up GitHub changes
-            // Note: GitHub Actions rebuild takes 1-2 minutes, so we'll retry multiple times
-            console.log('✅ GitHub sync successful, will trigger frontend reload...');
-            setTimeout(() => {
-              console.log('🔄 Dispatching reload event to frontend...');
-              window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { 
-                detail: { source: 'github-sync', reload: true, timestamp: Date.now() } 
-              }));
-            }, 5000); // Wait 5 seconds initially, then retry
-          } else {
-            // Only log to console for backend connectivity issues - don't show alarming toast
-            console.warn('GitHub sync note:', result.message);
-            // Only show warning if it's not a backend connectivity issue
-            if (!result.message.includes('Cannot connect to backend API') && 
-                !result.message.includes('backend server is running')) {
-              toast.warning('Saved locally. GitHub sync unavailable', {
-                description: 'Data saved successfully. Start backend server to enable auto-sync.'
-              });
-            }
-          }
-        }).catch((error: any) => {
-          // Silently handle sync errors - data is already saved locally
-          console.warn('GitHub sync error (non-blocking):', error.message || 'Unknown error');
-        });
-        
-        // Show success immediately - sync happens in background
-        toast.success('Changes saved successfully!', {
-          description: 'Syncing to GitHub in background...'
-        });
-      } else {
-        toast.success('Saved locally!', {
-          description: 'Enable GitHub Auto-Sync in Settings to publish changes'
-        });
-      }
-      
-      // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('portfolioDataUpdated'));
-      
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Error saving data:', error);
       setSaveStatus('error');

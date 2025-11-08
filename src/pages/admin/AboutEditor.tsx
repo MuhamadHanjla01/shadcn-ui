@@ -143,47 +143,26 @@ const AboutEditor = () => {
       saveExperiences(experiences);
       saveAchievements(achievements);
       
-      // Auto-commit to GitHub if enabled (non-blocking)
-      const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
-      if (isGitHubSyncConfigured()) {
-        // Run GitHub sync in background without blocking save operation
-        exportAndCommitToGitHub(
-          {
-            'user': updatedUserData,
-            'skills': skills,
-            'experiences': experiences,
-            'achievements': achievements
-          },
-          'Update about page data (automatic sync)'
-        ).then((result) => {
-          if (result.success) {
-            toast.success('Changes saved and published!', {
-              description: 'Users will see updates in 1-2 minutes'
-            });
-          } else {
-            console.warn('GitHub sync note:', result.message);
-            if (!result.message.includes('Cannot connect to backend API') && 
-                !result.message.includes('backend server is running')) {
-              toast.warning('Saved locally. GitHub sync unavailable', {
-                description: 'Data saved successfully. Start backend server to enable auto-sync.'
-              });
-            }
-          }
-        }).catch((error: any) => {
-          console.warn('GitHub sync error (non-blocking):', error.message || 'Unknown error');
-        });
-        
-        toast.success('Changes saved successfully!', {
-          description: 'Syncing to GitHub in background...'
-        });
-      } else {
-        toast.success('Saved locally!', {
-          description: 'Enable GitHub Auto-Sync in Settings to publish changes'
-        });
-      }
+      // Save to backend API
+      const saveResult = await saveAllDataToBackend({
+        'user': updatedUserData,
+        'skills': skills,
+        'experiences': experiences,
+        'achievements': achievements
+      });
       
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      if (saveResult.success) {
+        toast.success('Changes saved successfully!', {
+          description: 'Users will see updates in real-time via WebSocket'
+        });
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      } else {
+        toast.error('Failed to save to backend', {
+          description: saveResult.message
+        });
+        setSaveStatus('error');
+      }
     } catch (error) {
       console.error('Error saving data:', error);
       setSaveStatus('error');
