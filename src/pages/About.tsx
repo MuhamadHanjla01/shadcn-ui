@@ -84,7 +84,36 @@ const About = () => {
     loadData();
 
     // Listen for updates
-    const handleDataUpdate = () => loadData();
+    const handleDataUpdate = (event?: any) => {
+      console.log('🔄 Data update event received on About page:', event?.detail);
+      
+      // If real-time sync updated localStorage, reload from it
+      if (event?.detail?.source === 'realtime-sync') {
+        console.log('📥 Real-time sync update detected - reloading from localStorage...');
+        
+        // Reload from localStorage (already updated by Layout component)
+        const freshUserData = loadUserData(initialUserData);
+        const freshSkills = loadSkills(initialSkills);
+        const freshExperiences = loadExperiences(initialExperiences);
+        const freshAchievements = loadAchievements(initialAchievements);
+        
+        console.log('✅ Refreshed data:', {
+          bio: freshUserData.bio?.substring(0, 50) + '...',
+          skillsCount: freshSkills.length,
+          experiencesCount: freshExperiences.length,
+          achievementsCount: freshAchievements.length
+        });
+        
+        setUserData(freshUserData);
+        setSkills(freshSkills);
+        setExperiences(freshExperiences);
+        setAchievements(freshAchievements);
+        return;
+      }
+      
+      // Otherwise reload from backend/JSON
+      loadData();
+    };
     window.addEventListener('portfolioDataUpdated', handleDataUpdate);
     
     // Poll for updates every 5 seconds (fast real-time!)

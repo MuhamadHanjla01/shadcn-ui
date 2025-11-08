@@ -121,7 +121,33 @@ const Home = () => {
 
     // Listen for updates from admin panel
     const handleDataUpdate = (event?: any) => {
-      console.log('🔄 Data update event received:', event?.detail);
+      console.log('🔄 Data update event received on Home page:', event?.detail);
+      
+      // If real-time sync updated localStorage, reload from it
+      if (event?.detail?.source === 'realtime-sync') {
+        console.log('📥 Real-time sync update detected - reloading from localStorage...');
+        
+        // Reload from localStorage (already updated by Layout component)
+        const freshUserData = loadUserData(initialUserData);
+        const freshStats = loadStats(initialStats);
+        const freshSettings = loadSiteSettings();
+        
+        console.log('✅ Refreshed data:', {
+          name: freshUserData.name,
+          title: freshUserData.title,
+          statsCount: freshStats.length
+        });
+        
+        setUserData(freshUserData);
+        setStats(freshStats);
+        setHeroLayout((freshSettings.heroLayout as 'left'|'center'|'right') || 'center');
+        setSocialVisibility(freshSettings.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+        
+        // Reset typing animation
+        setDisplayText('');
+        setCurrentIndex(0);
+        return;
+      }
       
       // If event indicates GitHub sync completed, force refresh from JSON files
       const shouldForceReload = event?.detail?.reload === true;
