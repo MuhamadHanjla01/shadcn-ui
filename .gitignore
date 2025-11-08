@@ -32,3 +32,6 @@ dist-ssr
 
 # Maestro/MGX
 .mgx/
+
+# Backend data storage (Railway persistent volumes)
+server/data/
