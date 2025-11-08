@@ -26,7 +26,11 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:5173',
   'https://MuhamadHanjla01.github.io',
-  'https://muhamadhanjla01.github.io'
+  'https://muhamadhanjla01.github.io',
+  'https://muhamadhanjla01.github.io/shadcn-ui',
+  'https://muhamadhanjla01.github.io/shadcn-ui/',
+  'https://MuhamadHanjla01.github.io/shadcn-ui',
+  'https://MuhamadHanjla01.github.io/shadcn-ui/'
 ].filter(Boolean);
 
 app.use(cors({
