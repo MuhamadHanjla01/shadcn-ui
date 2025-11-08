@@ -17,10 +17,17 @@ const About = () => {
   const [achievements, setAchievements] = useState(initialAchievements);
 
   const handleResumeDownload = async (e: any) => {
-    if (!userData.resume) return;
+    if (!userData.resume) {
+      console.warn('No resume file available');
+      e.preventDefault();
+      return;
+    }
+    
+    // Handle data URL (base64 encoded PDF)
     if (typeof userData.resume === 'string' && userData.resume.startsWith('data:')) {
       e.preventDefault();
       try {
+        console.log('Downloading resume from data URL...');
         const res = await fetch(userData.resume);
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
@@ -31,9 +38,16 @@ const About = () => {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
+        console.log('✅ Resume downloaded successfully');
       } catch (err) {
         console.error('Failed to download resume:', err);
+        alert('Failed to download resume. Please try again.');
       }
+    }
+    // Handle external URL or path
+    else if (typeof userData.resume === 'string') {
+      // Let the browser handle the download naturally
+      console.log('Downloading resume from URL:', userData.resume);
     }
   };
 
