@@ -1,14 +1,14 @@
 /**
- * Backend API Service
+ * Backend API Service - Complete rebuild
  * 
- * Direct connection to backend for saving and loading portfolio data
- * This replaces GitHub sync for faster, real-time updates
+ * Handles all communication with backend server including:
+ * - REST API calls with retry logic
+ * - WebSocket connections for real-time updates
+ * - Automatic error recovery
  */
 
-// Request timeout in milliseconds
+// Configuration
 const REQUEST_TIMEOUT = 10000; // 10 seconds
-
-// Retry configuration
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
@@ -17,6 +17,28 @@ const RETRY_DELAY = 1000; // 1 second
  */
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Get the backend API base URL (HTTP/HTTPS)
+ */
+function getApiBaseUrl(): string {
+  // Development mode
+  if (import.meta.env.DEV) {
+    return import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  }
+  
+  // Production mode
+  return import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app';
+}
+
+/**
+ * Get the WebSocket URL (WS/WSS)
+ */
+export function getWebSocketUrl(): string {
+  const apiUrl = getApiBaseUrl();
+  // Convert http(s):// to ws(s)://
+  return apiUrl.replace(/^http/, 'ws');
 }
 
 /**
@@ -40,24 +62,6 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout:
     }
     throw error;
   }
-}
-
-/**
- * Get the backend API base URL
- */
-function getApiBaseUrl(): string {
-  let baseUrl: string;
-  
-  // In development, use localhost
-  if (import.meta.env.DEV) {
-    baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  } else {
-    // In production, use environment variable or fallback to Railway URL
-    baseUrl = import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app';
-  }
-  
-  // Remove trailing slash
-  return baseUrl.replace(/\/+$/, '');
 }
 
 export type DataType = 'user' | 'stats' | 'skills' | 'experiences' | 'achievements' | 'projects' | 'blog-posts' | 'site-settings';

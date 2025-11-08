@@ -1,43 +1,27 @@
 /**
- * Real-time Sync Service with WebSocket Support
+ * Real-time Sync Service - Complete rebuild
  * 
- * This service uses WebSocket for instant real-time updates
- * Falls back to polling if WebSocket is unavailable
+ * Provides real-time updates via WebSocket with polling fallback
+ * Automatically reconnects and handles errors gracefully
  */
 
-import { DATA_FILES } from './data-sync';
-import { loadDataFromFile } from './data-sync';
-import { getDataFromBackend } from './backend-api';
+import { getDataFromBackend, getWebSocketUrl } from './backend-api';
 
-// Polling interval as fallback (10 seconds)
-const POLL_INTERVAL = 10000;
+// Configuration
+const POLL_INTERVAL = 10000; // 10 seconds (fallback only)
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY = 3000; // 3 seconds
 
-// Track last known data versions
+// State tracking
 const lastDataVersions: Map<string, string> = new Map();
-
-// Track if we've done an initial poll
 const hasInitialPolled: Map<string, boolean> = new Map();
-
-// Track active polling
 let isPolling = false;
 
-// WebSocket connection
+// WebSocket state
 let ws: WebSocket | null = null;
-let wsReconnectTimer: NodeJS.Timeout | null = null;
+let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let wsReconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 5;
-const RECONNECT_DELAY = 3000;
-
-/**
- * Get WebSocket URL
- */
-function getWebSocketUrl(): string {
-  if (import.meta.env.DEV) {
-    return 'ws://localhost:3001';
-  }
-  const apiUrl = import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app';
-  return apiUrl.replace(/^https?/, 'ws');
-}
+let wsEnabled = true;
 
 /**
  * Initialize hash from initial data load
