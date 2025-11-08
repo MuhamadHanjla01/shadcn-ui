@@ -55,103 +55,90 @@ const About = () => {
     // Track page view
     trackPageView('about');
 
-    // Load data - prioritize backend API, fallback to JSON files
+    // Load data ONLY from backend - no localStorage or JSON fallback!
     const loadData = async () => {
-      console.log('📥 Loading about data...');
+      console.log('📥 Loading about data from backend only (no cache)...');
       
-      // Try backend API first
-      const [backendUserData, backendSkills, backendExperiences, backendAchievements] = await Promise.all([
-        getDataFromBackend('user'),
-        getDataFromBackend('skills'),
-        getDataFromBackend('experiences'),
-        getDataFromBackend('achievements')
-      ]);
-      
-      // Use backend data if available, otherwise fallback to JSON files
-      const userData = backendUserData || await loadDataFromFile(
-        DATA_FILES.user,
-        'portfolio_user_data',
-        initialUserData
-      );
-      const skills = backendSkills || await loadDataFromFile(
-        DATA_FILES.skills,
-        'portfolio_skills',
-        initialSkills
-      );
-      const experiences = backendExperiences || await loadDataFromFile(
-        DATA_FILES.experiences,
-        'portfolio_experiences',
-        initialExperiences
-      );
-      const achievements = backendAchievements || await loadDataFromFile(
-        DATA_FILES.achievements,
-        'portfolio_achievements',
-        initialAchievements
-      );
-      
-      setUserData(userData);
-      setSkills(skills);
-      setExperiences(experiences);
-      setAchievements(achievements);
+      try {
+        // ONLY load from backend API
+        const [backendUserData, backendSkills, backendExperiences, backendAchievements] = await Promise.all([
+          getDataFromBackend('user'),
+          getDataFromBackend('skills'),
+          getDataFromBackend('experiences'),
+          getDataFromBackend('achievements')
+        ]);
+        
+        // Use backend data or fallback to initial defaults (NOT localStorage)
+        const userData = (backendUserData as typeof initialUserData) || initialUserData;
+        const skills = (backendSkills as typeof initialSkills) || initialSkills;
+        const experiences = (backendExperiences as typeof initialExperiences) || initialExperiences;
+        const achievements = (backendAchievements as typeof initialAchievements) || initialAchievements;
+        
+        console.log('✅ Loaded fresh data from backend:', {
+          user: userData.name,
+          skills: skills.length,
+          experiences: experiences.length,
+          achievements: achievements.length,
+          timestamp: new Date().toISOString()
+        });
+        
+        setUserData(userData);
+        setSkills(skills);
+        setExperiences(experiences);
+        setAchievements(achievements);
+      } catch (error) {
+        console.error('❌ Error loading data from backend:', error);
+        // Use initial defaults if backend fails
+        setUserData(initialUserData);
+        setSkills(initialSkills);
+        setExperiences(initialExperiences);
+        setAchievements(initialAchievements);
+      }
     };
 
     loadData();
 
-    // Listen for updates
-    const handleDataUpdate = (event?: any) => {
+    // Listen for WebSocket updates from admin panel
+    const handleDataUpdate = async (event?: any) => {
       console.log('🔄 Data update event received on About page:', event?.detail);
       
-      // If real-time sync updated localStorage, reload from it
+      // If real-time sync update detected, use data from event or fetch from backend
       if (event?.detail?.source === 'realtime-sync') {
-        console.log('📥 Real-time sync update detected - reloading from localStorage...');
+        console.log('📥 Real-time sync update detected');
         
-        // Reload from localStorage (already updated by Layout component)
-        const freshUserData = loadUserData(initialUserData);
-        const freshSkills = loadSkills(initialSkills);
-        const freshExperiences = loadExperiences(initialExperiences);
-        const freshAchievements = loadAchievements(initialAchievements);
-        
-        console.log('✅ Refreshed data:', {
-          bio: freshUserData.bio?.substring(0, 50) + '...',
-          skillsCount: freshSkills.length,
-          experiencesCount: freshExperiences.length,
-          achievementsCount: freshAchievements.length
-        });
-        
-        setUserData(freshUserData);
-        setSkills(freshSkills);
-        setExperiences(freshExperiences);
-        setAchievements(freshAchievements);
+        // If event contains the data directly, use it immediately
+        const eventData = event?.detail?.data;
+        if (eventData) {
+          console.log('✅ Using data from WebSocket event:', Object.keys(eventData));
+          
+          if (eventData.user) {
+            setUserData(eventData.user as typeof initialUserData);
+            console.log('✅ Updated user');
+          }
+          if (eventData.skills) {
+            setSkills(eventData.skills as typeof initialSkills);
+            console.log('✅ Updated skills:', (eventData.skills as any[]).length);
+          }
+          if (eventData.experiences) {
+            setExperiences(eventData.experiences as typeof initialExperiences);
+            console.log('✅ Updated experiences:', (eventData.experiences as any[]).length);
+          }
+          if (eventData.achievements) {
+            setAchievements(eventData.achievements as typeof initialAchievements);
+            console.log('✅ Updated achievements:', (eventData.achievements as any[]).length);
+          }
+        }
         return;
       }
       
-      // Otherwise reload from backend/JSON
+      // Otherwise reload data from backend
+      console.log('📥 Reloading data from backend...');
       loadData();
     };
     window.addEventListener('portfolioDataUpdated', handleDataUpdate);
     
-    // Poll for updates every 5 seconds (fast real-time!)
-    const pollInterval = setInterval(async () => {
-      const [updatedSkills, updatedExperiences, updatedAchievements, updatedUserData] = await Promise.all([
-        checkForUpdates('skills'),
-        checkForUpdates('experiences'),
-        checkForUpdates('achievements'),
-        checkForUpdates('user')
-      ]);
-      
-      if (updatedSkills) setSkills(updatedSkills);
-      if (updatedExperiences) setExperiences(updatedExperiences);
-      if (updatedAchievements) setAchievements(updatedAchievements);
-      
-      // Also check user data
-      if (updatedUserData) {
-        setUserData(updatedUserData);
-      }
-    }, 5000);
-    
     return () => {
       window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
-      clearInterval(pollInterval);
     };
   }, []);
 

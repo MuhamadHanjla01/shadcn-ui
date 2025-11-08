@@ -136,14 +136,11 @@ const AboutEditor = () => {
     setSaveStatus('idle');
 
     try {
-      const userData = JSON.parse(localStorage.getItem('portfolio_user_data') || '{}');
-      const updatedUserData = { ...userData, bio };
-      saveUserData(updatedUserData);
-      saveSkills(skills);
-      saveExperiences(experiences);
-      saveAchievements(achievements);
+      // Get current user data from backend (not localStorage)
+      const currentUserData = (await getDataFromBackend('user')) as any;
+      const updatedUserData = { ...(currentUserData || {}), bio };
       
-      // Save to backend API
+      // Save ONLY to backend API - no localStorage!
       const saveResult = await saveAllDataToBackend({
         'user': updatedUserData,
         'skills': skills,
@@ -153,7 +150,7 @@ const AboutEditor = () => {
       
       if (saveResult.success) {
         toast.success('Changes saved successfully!', {
-          description: 'Users will see updates in real-time via WebSocket'
+          description: 'Users will see updates instantly via WebSocket'
         });
         setSaveStatus('success');
         setTimeout(() => setSaveStatus('idle'), 3000);
@@ -165,6 +162,9 @@ const AboutEditor = () => {
       }
     } catch (error) {
       console.error('Error saving data:', error);
+      toast.error('Save failed', {
+        description: 'Could not connect to backend server'
+      });
       setSaveStatus('error');
     } finally {
       setIsSaving(false);

@@ -77,74 +77,43 @@ const BlogManager = () => {
     setSaveStatus('idle');
 
     try {
-      // Save to localStorage (for local preview)
-      saveBlogPosts(blogPosts);
-      
-      // Save to backend API (direct connection - real-time updates!)
+      // Save ONLY to backend API - no localStorage!
       const saveResult = await saveDataToBackend('blog-posts', blogPosts);
       
       if (saveResult.success) {
-        toast.success('Changes saved to backend!', {
-          description: 'Users will see updates in real-time'
+        toast.success('Changes saved successfully!', {
+          description: 'Users will see updates instantly via WebSocket'
         });
+        setSaveStatus('success');
         
-        // Trigger frontend update event
-        window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { 
-          detail: { source: 'backend-api', reload: true, timestamp: Date.now() } 
-        }));
+        // Add success notification
+        notificationService.addNotification(
+          'success',
+          'Blog Posts Saved',
+          `Successfully updated ${blogPosts.length} blog post${blogPosts.length !== 1 ? 's' : ''}`,
+          '/admin/blog'
+        );
+        
+        setTimeout(() => setSaveStatus('idle'), 3000);
       } else {
         toast.error('Failed to save to backend', {
           description: saveResult.message
         });
-      }
-      
-      // Optional: Also sync to GitHub if configured (for backup)
-      const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
-      if (isGitHubSyncConfigured()) {
-        // Run GitHub sync in background without blocking save operation
-        exportAndCommitToGitHub(
-          { 'blog-posts': blogPosts },
-          'Update blog posts (automatic sync)'
-        ).then((result) => {
-          if (result.success) {
-            toast.success('Changes saved and published!', {
-              description: 'Users will see updates in 1-2 minutes'
-            });
-          } else {
-            console.warn('GitHub sync note:', result.message);
-            if (!result.message.includes('Cannot connect to backend API') && 
-                !result.message.includes('backend server is running')) {
-              toast.warning('Saved locally. GitHub sync unavailable', {
-                description: 'Data saved successfully. Start backend server to enable auto-sync.'
-              });
-            }
-          }
-        }).catch((error: any) => {
-          console.warn('GitHub sync error (non-blocking):', error.message || 'Unknown error');
-        });
+        setSaveStatus('error');
         
-        toast.success('Changes saved successfully!', {
-          description: 'Syncing to GitHub in background...'
-        });
-      } else {
-        toast.success('Saved locally!', {
-          description: 'Enable GitHub Auto-Sync in Settings to publish changes'
-        });
+        // Add error notification
+        notificationService.addNotification(
+          'warning',
+          'Save Failed',
+          'Failed to save blog posts. Please try again.',
+          '/admin/blog'
+        );
       }
-      
-      setSaveStatus('success');
-      
-      // Add success notification
-      notificationService.addNotification(
-        'success',
-        'Blog Posts Saved',
-        `Successfully updated ${blogPosts.length} blog post${blogPosts.length !== 1 ? 's' : ''}`,
-        '/admin/blog'
-      );
-      
-      setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       console.error('Error saving blog posts:', error);
+      toast.error('Save failed', {
+        description: 'Could not connect to backend server'
+      });
       setSaveStatus('error');
       
       // Add error notification
