@@ -67,52 +67,20 @@ const Layout = ({ children }: LayoutProps) => {
     const cleanup = startRealtimeSync((updates) => {
       console.log('📡 Received real-time updates:', Object.keys(updates));
       
-      // Add timestamp to force cache invalidation
+      // Add timestamp for tracking
       const timestamp = Date.now();
+      console.log('✅ Real-time update at', new Date(timestamp).toISOString());
       
-      // Update localStorage when backend broadcasts changes
-      if (updates.user) {
-        // Add __updated timestamp to force cache busting
-        const userData = { ...updates.user, __updated: timestamp };
-        saveUserData(userData);
-        console.log('✅ Updated user data from real-time sync at', new Date(timestamp).toISOString());
-      }
-      if (updates.stats) {
-        saveStats(updates.stats);
-        console.log('✅ Updated stats from real-time sync at', new Date(timestamp).toISOString());
-      }
-      if (updates.siteSettings) {
-        saveSiteSettings(updates.siteSettings);
-        setSiteSettings(updates.siteSettings);
-        console.log('✅ Updated site settings from real-time sync at', new Date(timestamp).toISOString());
-      }
-      if (updates.projects) {
-        saveProjects(updates.projects);
-        console.log('✅ Updated projects from real-time sync at', new Date(timestamp).toISOString());
-      }
-      if (updates.blogPosts) {
-        saveBlogPosts(updates.blogPosts);
-        console.log('✅ Updated blog posts from real-time sync at', new Date(timestamp).toISOString());
-      }
-      if (updates.skills) {
-        saveSkills(updates.skills);
-        console.log('✅ Updated skills from real-time sync at', new Date(timestamp).toISOString());
-      }
-      if (updates.experiences) {
-        saveExperiences(updates.experiences);
-        console.log('✅ Updated experiences from real-time sync at', new Date(timestamp).toISOString());
-      }
-      if (updates.achievements) {
-        saveAchievements(updates.achievements);
-        console.log('✅ Updated achievements from real-time sync at', new Date(timestamp).toISOString());
-      }
+      // DON'T save to localStorage - just trigger UI refresh event
+      // The individual pages will fetch fresh data from backend
       
       // Trigger UI update event with timestamp
       window.dispatchEvent(new CustomEvent('portfolioDataUpdated', {
         detail: { 
           source: 'realtime-sync', 
           updates: Object.keys(updates),
-          timestamp: timestamp
+          timestamp: timestamp,
+          data: updates // Pass the data directly for immediate UI update
         }
       }));
     });

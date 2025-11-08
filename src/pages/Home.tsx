@@ -54,191 +54,92 @@ const Home = () => {
     }
   };
 
-  // Load user data from shared JSON files (or localStorage fallback)
+  // Load user data ONLY from backend - no localStorage caching!
   useEffect(() => {
     // Track page view for analytics
     trackPageView('home');
 
     const loadData = async () => {
-      console.log('📥 Loading home data...');
+      console.log('📥 Loading home data from backend only (no cache)...');
       
-      // Try to load from backend API first (direct connection - real-time!)
-      const [backendUserData, backendStats, backendSettings] = await Promise.all([
-        getDataFromBackend('user'),
-        getDataFromBackend('stats'),
-        getDataFromBackend('site-settings')
-      ]);
-      
-      // Use backend data if available, otherwise fallback to JSON files/localStorage
-      let userData, stats, ss;
-      
-      if (backendUserData) {
-        userData = backendUserData;
-        console.log('✅ Loaded user data from backend API');
-      } else {
-        userData = await loadDataFromFile(
-          DATA_FILES.user,
-          'portfolio_user_data',
-          initialUserData
-        );
-      }
-      
-      if (backendStats) {
-        stats = backendStats;
-        console.log('✅ Loaded stats from backend API');
-      } else {
-        stats = await loadDataFromFile(
-          DATA_FILES.stats,
-          'portfolio_stats',
-          initialStats
-        );
-      }
-      
-      if (backendSettings) {
-        ss = backendSettings;
-        console.log('✅ Loaded site settings from backend API');
-      } else {
-        ss = await loadDataFromFile(
-          DATA_FILES.siteSettings,
-          'portfolio_site_settings',
-          loadSiteSettings()
-        );
-      }
-      
-      // Update state with loaded data
-      setUserData(userData);
-      setStats(stats);
-      
-      // Initialize hashes for real-time sync (so we can detect changes later)
-      initializeDataHash('user', userData);
-      initializeDataHash('stats', stats);
-      
-      setHeroLayout((ss.heroLayout as 'left'|'center'|'right') || 'center');
-      setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
-      
-      // Initialize hash for site settings
-      initializeDataHash('siteSettings', ss);
-      
-      // Debug: Log what data was loaded
-      if (import.meta.env.DEV) {
-        console.log('📥 Loaded user data:', { 
-          name: userData.name, 
-          title: userData.title,
-          tagline: userData.tagline,
-          profileImage: userData.profileImage ? '✅ Set' : '❌ Missing',
-          resume: userData.resume ? '✅ Set' : '❌ Missing'
+      try {
+        // ONLY load from backend API - no fallback to localStorage or JSON
+        const [backendUserData, backendStats, backendSettings] = await Promise.all([
+          getDataFromBackend('user'),
+          getDataFromBackend('stats'),
+          getDataFromBackend('site-settings')
+        ]);
+        
+        // Use backend data or fallback to initial defaults (NOT localStorage)
+        const userData = (backendUserData as typeof initialUserData) || initialUserData;
+        const stats = (backendStats as typeof initialStats) || initialStats;
+        const ss = (backendSettings as ReturnType<typeof loadSiteSettings>) || loadSiteSettings();
+        
+        console.log('✅ Loaded fresh data from backend:', {
+          user: userData.name,
+          stats: stats.length,
+          timestamp: new Date().toISOString()
         });
+        
+        // Update state with backend data
+        setUserData(userData);
+        setStats(stats);
+        setHeroLayout((ss.heroLayout as 'left'|'center'|'right') || 'center');
+        setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+        
+        // Initialize hashes for change detection
+        initializeDataHash('user', userData);
+        initializeDataHash('stats', stats);
+        initializeDataHash('siteSettings', ss);
+      } catch (error) {
+        console.error('❌ Error loading data from backend:', error);
+        // Use initial defaults if backend fails
+        setUserData(initialUserData);
+        setStats(initialStats);
       }
     };
 
     loadData();
 
-    // Listen for updates from admin panel
-    const handleDataUpdate = (event?: any) => {
+    // Listen for WebSocket updates from admin panel
+    const handleDataUpdate = async (event?: any) => {
       console.log('🔄 Data update event received on Home page:', event?.detail);
       
-      // If real-time sync updated localStorage, reload from it
+      // If real-time sync update detected, use data from event or fetch from backend
       if (event?.detail?.source === 'realtime-sync') {
-        console.log('📥 Real-time sync update detected - reloading from localStorage...');
+        console.log('📥 Real-time sync update detected');
         
-        // Reload from localStorage (already updated by Layout component)
-        const freshUserData = loadUserData(initialUserData);
-        const freshStats = loadStats(initialStats);
-        const freshSettings = loadSiteSettings();
-        
-        console.log('✅ Refreshed data:', {
-          name: freshUserData.name,
-          title: freshUserData.title,
-          statsCount: freshStats.length
-        });
-        
-        setUserData(freshUserData);
-        setStats(freshStats);
-        setHeroLayout((freshSettings.heroLayout as 'left'|'center'|'right') || 'center');
-        setSocialVisibility(freshSettings.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
-        
-        // Reset typing animation
-        setDisplayText('');
-        setCurrentIndex(0);
+        // If event contains the data directly, use it immediately
+        const eventData = event?.detail?.data;
+        if (eventData) {
+          console.log('✅ Using data from WebSocket event:', Object.keys(eventData));
+          
+          if (eventData.user) {
+            setUserData(eventData.user as typeof initialUserData);
+            console.log('✅ Updated user:', (eventData.user as any).name);
+          }
+          if (eventData.stats) {
+            setStats(eventData.stats as typeof initialStats);
+            console.log('✅ Updated stats:', (eventData.stats as any[]).length);
+          }
+          if (eventData.siteSettings) {
+            setHeroLayout(((eventData.siteSettings as any).heroLayout as 'left'|'center'|'right') || 'center');
+            setSocialVisibility((eventData.siteSettings as any).socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+            console.log('✅ Updated site settings');
+          }
+          
+          // Reset typing animation
+          setDisplayText('');
+          setCurrentIndex(0);
+        }
         return;
       }
       
-      // If event indicates GitHub sync completed, force refresh from JSON files
-      const shouldForceReload = event?.detail?.reload === true;
-      
-      // Reload data - force refresh from JSON if GitHub sync completed
-      if (shouldForceReload) {
-        console.log('📥 GitHub sync detected - forcing reload from JSON files...');
-        // Wait a bit for GitHub to process the commit and GitHub Actions to rebuild
-        setTimeout(async () => {
-          console.log('🔄 Loading fresh data from JSON files...');
-          
-          // Force reload with multiple attempts (GitHub Actions takes time)
-          const attemptReload = async (attempt: number = 1, maxAttempts: number = 3) => {
-            const freshUserData = await loadDataFromFile(
-              DATA_FILES.user,
-              'portfolio_user_data',
-              initialUserData,
-              true // Force refresh
-            );
-            const freshStats = await loadDataFromFile(
-              DATA_FILES.stats,
-              'portfolio_stats',
-              initialStats,
-              true // Force refresh
-            );
-            
-            console.log(`📊 Reload attempt ${attempt}:`, {
-              name: freshUserData.name,
-              title: freshUserData.title,
-              statsCount: freshStats.length
-            });
-            
-            setUserData(freshUserData);
-            setStats(freshStats);
-            
-            const freshSettings = await loadDataFromFile(
-              DATA_FILES.siteSettings,
-              'portfolio_site_settings',
-              loadSiteSettings(),
-              true
-            );
-            setHeroLayout((freshSettings.heroLayout as 'left'|'center'|'right') || 'center');
-            setSocialVisibility(freshSettings.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
-            
-            setDisplayText('');
-            setCurrentIndex(0);
-            
-            // Check if data actually changed by comparing with current state
-            const dataChanged = 
-              freshUserData.name !== userData.name || 
-              freshUserData.title !== userData.title ||
-              JSON.stringify(freshStats) !== JSON.stringify(stats);
-            
-            if (dataChanged) {
-              console.log('✅ Data changed detected! Frontend updated with new data.');
-            } else if (attempt < maxAttempts) {
-              console.log(`⏳ Data unchanged, retrying in 10 seconds... (${attempt}/${maxAttempts})`);
-              console.log('💡 This is normal - GitHub Actions takes 1-2 minutes to rebuild and deploy');
-              setTimeout(() => attemptReload(attempt + 1, maxAttempts), 10000); // 10 seconds between retries
-            } else {
-              console.log('⚠️ Max retries reached. Data might not have updated yet.');
-              console.log('💡 This usually means:');
-              console.log('   1. GitHub Actions is still building (check GitHub Actions tab)');
-              console.log('   2. JSON files haven\'t been deployed yet');
-              console.log('   3. Try manual refresh: Ctrl+Shift+R');
-            }
-          };
-          
-          attemptReload();
-        }, 5000); // Wait 5 seconds for GitHub Actions to start building
-      } else {
-        // Normal reload from localStorage or JSON
-        console.log('📥 Normal data reload...');
-        loadData();
-        setDisplayText('');
-        setCurrentIndex(0);
-      }
+      // Otherwise reload data from backend
+      console.log('📥 Reloading data from backend...');
+      loadData();
+      setDisplayText('');
+      setCurrentIndex(0);
     };
 
     window.addEventListener('portfolioDataUpdated', handleDataUpdate);
