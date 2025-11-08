@@ -68,9 +68,9 @@ const HomeEditor = () => {
         
         // Use backend data if available, otherwise fallback to localStorage/JSON
         if (backendUserData) {
-          freshUserData = backendUserData;
+          freshUserData = backendUserData as typeof initialUserData;
           // Update localStorage for local preview
-          saveUserData(backendUserData);
+          saveUserData(backendUserData as typeof initialUserData);
           console.log('✅ Loaded user data from backend API');
         } else {
           // Fallback: Check if data was recently saved locally
@@ -86,8 +86,8 @@ const HomeEditor = () => {
         }
         
         if (backendStats) {
-          freshStats = backendStats;
-          saveStats(backendStats);
+          freshStats = backendStats as Stat[];
+          saveStats(backendStats as Stat[]);
           console.log('✅ Loaded stats from backend API');
         } else {
           const statsKey = 'portfolio_stats';
@@ -101,8 +101,8 @@ const HomeEditor = () => {
         }
         
         if (backendSettings) {
-          freshSiteSettings = backendSettings;
-          saveSiteSettings(backendSettings);
+          freshSiteSettings = backendSettings as ReturnType<typeof loadSiteSettings>;
+          saveSiteSettings(backendSettings as ReturnType<typeof loadSiteSettings>);
           console.log('✅ Loaded site settings from backend API');
         } else {
           const settingsKey = 'portfolio_site_settings';

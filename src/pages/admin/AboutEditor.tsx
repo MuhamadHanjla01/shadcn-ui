@@ -46,8 +46,8 @@ const AboutEditor = () => {
         
         // Use backend data if available
         if (backendUserData) {
-          freshUserData = backendUserData;
-          saveUserData(backendUserData);
+          freshUserData = backendUserData as typeof initialUserData;
+          saveUserData(backendUserData as typeof initialUserData);
         } else {
           const userKey = 'portfolio_user_data';
           if (isRecentlySaved(userKey, 5)) {
@@ -58,8 +58,8 @@ const AboutEditor = () => {
         }
         
         if (backendSkills) {
-          freshSkills = backendSkills;
-          saveSkills(backendSkills);
+          freshSkills = backendSkills as Skill[];
+          saveSkills(backendSkills as Skill[]);
         } else {
           const skillsKey = 'portfolio_skills';
           if (isRecentlySaved(skillsKey, 5)) {
@@ -70,8 +70,8 @@ const AboutEditor = () => {
         }
         
         if (backendExperiences) {
-          freshExperiences = backendExperiences;
-          saveExperiences(backendExperiences);
+          freshExperiences = backendExperiences as Experience[];
+          saveExperiences(backendExperiences as Experience[]);
         } else {
           const experiencesKey = 'portfolio_experiences';
           if (isRecentlySaved(experiencesKey, 5)) {
@@ -82,8 +82,8 @@ const AboutEditor = () => {
         }
         
         if (backendAchievements) {
-          freshAchievements = backendAchievements;
-          saveAchievements(backendAchievements);
+          freshAchievements = backendAchievements as Achievement[];
+          saveAchievements(backendAchievements as Achievement[]);
         } else {
           const achievementsKey = 'portfolio_achievements';
           if (isRecentlySaved(achievementsKey, 5)) {
