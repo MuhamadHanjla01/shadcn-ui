@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { loadSiteSettings, SiteSettings, loadThemeSettingsSync, ThemeSettings } from '@/lib/storage';
+import { loadSiteSettings, SiteSettings, loadThemeSettingsSync, ThemeSettings, saveUserData, saveStats, saveProjects, saveBlogPosts, saveSkills, saveExperiences, saveAchievements, saveSiteSettings } from '@/lib/storage';
 import { hexToHsl } from '@/lib/theme-utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Moon, Sun, Menu, Home, User, Briefcase, PenTool, Mail } from 'lucide-react';
 import Footer from './Footer';
 import MetadataManager from './MetadataManager';
+import { startRealtimeSync } from '@/lib/realtime-sync';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -57,6 +58,57 @@ const Layout = ({ children }: LayoutProps) => {
     };
     window.addEventListener('portfolioDataUpdated', onThemeUpdate as EventListener);
     return () => window.removeEventListener('portfolioDataUpdated', onThemeUpdate as EventListener);
+  }, []);
+
+  // Initialize WebSocket real-time sync for frontend updates
+  useEffect(() => {
+    console.log('🚀 Initializing real-time sync...');
+    
+    const cleanup = startRealtimeSync((updates) => {
+      console.log('📡 Received real-time updates:', Object.keys(updates));
+      
+      // Update localStorage when backend broadcasts changes
+      if (updates.user) {
+        saveUserData(updates.user);
+        console.log('✅ Updated user data from real-time sync');
+      }
+      if (updates.stats) {
+        saveStats(updates.stats);
+        console.log('✅ Updated stats from real-time sync');
+      }
+      if (updates.siteSettings) {
+        saveSiteSettings(updates.siteSettings);
+        setSiteSettings(updates.siteSettings);
+        console.log('✅ Updated site settings from real-time sync');
+      }
+      if (updates.projects) {
+        saveProjects(updates.projects);
+        console.log('✅ Updated projects from real-time sync');
+      }
+      if (updates.blogPosts) {
+        saveBlogPosts(updates.blogPosts);
+        console.log('✅ Updated blog posts from real-time sync');
+      }
+      if (updates.skills) {
+        saveSkills(updates.skills);
+        console.log('✅ Updated skills from real-time sync');
+      }
+      if (updates.experiences) {
+        saveExperiences(updates.experiences);
+        console.log('✅ Updated experiences from real-time sync');
+      }
+      if (updates.achievements) {
+        saveAchievements(updates.achievements);
+        console.log('✅ Updated achievements from real-time sync');
+      }
+      
+      // Trigger UI update event
+      window.dispatchEvent(new CustomEvent('portfolioDataUpdated', {
+        detail: { source: 'realtime-sync', updates: Object.keys(updates) }
+      }));
+    });
+    
+    return cleanup;
   }, []);
 
   // Apply theme settings as CSS variables
