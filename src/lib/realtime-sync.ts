@@ -1,37 +1,53 @@
 /**
- * Real-time Sync Service for User Devices
+ * Real-time Sync Service with WebSocket Support
  * 
- * This service automatically polls backend API for updates
- * so users see changes without manual refresh
+ * This service uses WebSocket for instant real-time updates
+ * Falls back to polling if WebSocket is unavailable
  */
 
 import { DATA_FILES } from './data-sync';
 import { loadDataFromFile } from './data-sync';
 import { getDataFromBackend } from './backend-api';
 
-// Polling interval in milliseconds (5 seconds for fast real-time updates!)
-const POLL_INTERVAL = 5000;
+// Polling interval as fallback (10 seconds)
+const POLL_INTERVAL = 10000;
 
-// Track last known data versions to detect changes
+// Track last known data versions
 const lastDataVersions: Map<string, string> = new Map();
 
-// Track if we've done an initial poll (to avoid false positives)
+// Track if we've done an initial poll
 const hasInitialPolled: Map<string, boolean> = new Map();
 
-// Track active polling to prevent multiple polls
+// Track active polling
 let isPolling = false;
-let pollQueue: Promise<void> | null = null;
+
+// WebSocket connection
+let ws: WebSocket | null = null;
+let wsReconnectTimer: NodeJS.Timeout | null = null;
+let wsReconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY = 3000;
 
 /**
- * Initialize hash from initial data load (called from page components)
- * This ensures we have a baseline to compare against when polling starts
+ * Get WebSocket URL
+ */
+function getWebSocketUrl(): string {
+  if (import.meta.env.DEV) {
+    return 'ws://localhost:3001';
+  }
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app';
+  return apiUrl.replace(/^https?/, 'ws');
+}
+
+/**
+ * Initialize hash from initial data load
  */
 export function initializeDataHash(key: string, data: any): void {
   if (!data) return;
   const hash = getDataHash(data);
   if (!lastDataVersions.has(key)) {
     lastDataVersions.set(key, hash);
-    console.log(`📋 Initialized hash for ${key} from page load:`, hash.substring(0, 10) + '...');
+    console.log(`📋 Initialized hash for ${key}:`, hash.substring(0, 10) + '...');
   }
 }
 
@@ -83,7 +99,90 @@ function hasDataChanged(key: string, currentData: any, isInitialPoll: boolean = 
 }
 
 /**
- * Starts automatic polling for data updates
+ * Connect to WebSocket for real-time updates
+ */
+function connectWebSocket(callback: (updates: any) => void): () => void {
+  const wsUrl = getWebSocketUrl();
+  
+  console.log('🔌 Connecting to WebSocket:', wsUrl);
+  
+  try {
+    ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      console.log('✅ WebSocket connected - Real-time sync enabled!');
+      wsReconnectAttempts = 0;
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        
+        if (message.type === 'connected') {
+          console.log('🎉 Real-time sync ready:', message.message);
+        } else if (message.type === 'update') {
+          console.log('📡 Real-time update received:', message.dataType);
+          
+          // Map backend data types to frontend
+          const updates: any = {};
+          const dataType = message.dataType;
+          
+          if (dataType === 'user') updates.user = message.data;
+          else if (dataType === 'stats') updates.stats = message.data;
+          else if (dataType === 'site-settings') updates.siteSettings = message.data;
+          else if (dataType === 'projects') updates.projects = message.data;
+          else if (dataType === 'blog-posts') updates.blogPosts = message.data;
+          else if (dataType === 'skills') updates.skills = message.data;
+          else if (dataType === 'experiences') updates.experiences = message.data;
+          else if (dataType === 'achievements') updates.achievements = message.data;
+          
+          if (Object.keys(updates).length > 0) {
+            console.log('🔄 Applying real-time update:', updates);
+            callback(updates);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error parsing WebSocket message:', error);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('❌ WebSocket error:', error);
+    };
+    
+    ws.onclose = () => {
+      console.log('🔌 WebSocket disconnected');
+      ws = null;
+      
+      // Try to reconnect
+      if (wsReconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        wsReconnectAttempts++;
+        console.log(`🔄 Reconnecting in ${RECONNECT_DELAY}ms (attempt ${wsReconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+        wsReconnectTimer = setTimeout(() => {
+          connectWebSocket(callback);
+        }, RECONNECT_DELAY);
+      } else {
+        console.log('⚠️ Max reconnect attempts reached. Falling back to polling.');
+      }
+    };
+    
+    return () => {
+      if (wsReconnectTimer) {
+        clearTimeout(wsReconnectTimer);
+      }
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+    };
+  } catch (error) {
+    console.error('❌ Failed to create WebSocket:', error);
+    return () => {};
+  }
+}
+
+/**
+ * Starts real-time sync with WebSocket + polling fallback
  * Only runs on user-facing pages (not admin)
  */
 export function startRealtimeSync(callback: (updates: {
@@ -96,37 +195,34 @@ export function startRealtimeSync(callback: (updates: {
   experiences?: any;
   achievements?: any;
 }) => void) {
-  // Only poll if not in admin panel
   if (window.location.pathname.includes('/admin')) {
     console.log('🛑 Skipping real-time sync - admin panel detected');
-    return () => {}; // Return no-op cleanup
+    return () => {};
   }
 
-  console.log('🔄 Starting real-time sync - polling backend API every 5 seconds for updates');
+  console.log('🚀 Starting real-time sync with WebSocket + polling fallback');
 
+  // Connect WebSocket for instant updates
+  const wsCleanup = connectWebSocket(callback);
+  
+  // Polling fallback (runs less frequently when WebSocket is active)
   const pollForUpdates = async (isInitialPoll: boolean = false) => {
-    // Prevent concurrent polling
+    // Skip polling if WebSocket is connected
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      console.log('⏭️ Skipping poll - WebSocket active');
+      return;
+    }
+    
     if (isPolling) {
-      console.log('⏸️ Skipping poll - another poll is in progress');
+      console.log('⏸️ Skipping poll - another poll in progress');
       return;
     }
     
     isPolling = true;
     
     try {
-      const baseUrl = typeof window !== 'undefined' 
-        ? (import.meta.env.DEV ? 'http://localhost:3001' : import.meta.env.VITE_API_URL || 'https://shadcn-ui-production-8f2d.up.railway.app')
-        : '';
+      console.log('🔍 Polling fallback active (WebSocket unavailable)...');
       
-      console.log('🔍 Polling for updates from backend API...', {
-        time: new Date().toLocaleTimeString(),
-        backendUrl: baseUrl,
-        isDev: import.meta.env.DEV,
-        isInitial: isInitialPoll
-      });
-      
-      // Load from backend API (direct connection - faster than JSON files!)
-      // Use Promise.allSettled to handle individual failures gracefully
       const results = await Promise.allSettled([
         getDataFromBackend('user'),
         getDataFromBackend('stats'),
@@ -137,92 +233,54 @@ export function startRealtimeSync(callback: (updates: {
       const freshStats = results[1].status === 'fulfilled' ? results[1].value : null;
       const freshSiteSettings = results[2].status === 'fulfilled' ? results[2].value : null;
 
-      // Debug: Log what we fetched
-      console.log('📥 Fetched data from backend:', {
-        user: freshUserData ? `✅ ${(freshUserData as any).name || 'Unknown'}` : '❌ null',
-        stats: freshStats ? `✅ ${(freshStats as any).length} items` : '❌ null',
-        settings: freshSiteSettings ? '✅ Loaded' : '❌ null'
-      });
-      
-      // If all are null and it's not the initial poll, backend might not be accessible
-      if (!freshUserData && !freshStats && !freshSiteSettings && !isInitialPoll) {
-        console.warn('⚠️ All backend requests returned null - backend might be down or unreachable');
-      }
-
-      // Check for changes
       const updates: any = {};
       let hasUpdates = false;
 
-      if (freshUserData) {
-        const userChanged = hasDataChanged('user', freshUserData, isInitialPoll);
-        console.log('🔍 User data check:', userChanged ? '✅ CHANGED' : (isInitialPoll ? '📋 Initial load' : '⏸️ No change'));
-        if (userChanged) {
-          updates.user = freshUserData;
-          hasUpdates = true;
-          console.log('🔄 User data updated:', {
-            name: (freshUserData as any).name,
-            title: (freshUserData as any).title
-          });
-        }
+      if (freshUserData && hasDataChanged('user', freshUserData, isInitialPoll)) {
+        updates.user = freshUserData;
+        hasUpdates = true;
       }
 
-      if (freshStats) {
-        const statsChanged = hasDataChanged('stats', freshStats, isInitialPoll);
-        console.log('🔍 Stats check:', statsChanged ? '✅ CHANGED' : (isInitialPoll ? '📋 Initial load' : '⏸️ No change'));
-        if (statsChanged) {
-          updates.stats = freshStats;
-          hasUpdates = true;
-          console.log('🔄 Stats updated:', { count: (freshStats as any).length });
-        }
+      if (freshStats && hasDataChanged('stats', freshStats, isInitialPoll)) {
+        updates.stats = freshStats;
+        hasUpdates = true;
       }
 
-      if (freshSiteSettings) {
-        const settingsChanged = hasDataChanged('siteSettings', freshSiteSettings, isInitialPoll);
-        console.log('🔍 Site settings check:', settingsChanged ? '✅ CHANGED' : (isInitialPoll ? '📋 Initial load' : '⏸️ No change'));
-        if (settingsChanged) {
-          updates.siteSettings = freshSiteSettings;
-          hasUpdates = true;
-          console.log('🔄 Site settings updated');
-        }
+      if (freshSiteSettings && hasDataChanged('siteSettings', freshSiteSettings, isInitialPoll)) {
+        updates.siteSettings = freshSiteSettings;
+        hasUpdates = true;
       }
 
-      // Only call callback if there are actual updates
       if (hasUpdates) {
-        console.log('✅✅✅ Real-time update detected - refreshing UI', updates);
+        console.log('✅ Polling update detected:', updates);
         callback(updates);
-      } else {
-        console.log('⏸️ No updates detected this poll');
       }
     } catch (error) {
-      // Log errors for debugging but don't throw
-      console.error('❌ Real-time sync error:', error);
+      console.error('❌ Polling error:', error);
     } finally {
       isPolling = false;
     }
   };
 
-  // Wait a bit before first poll to let initial page load complete
-  // Then poll immediately, then set interval
+  // Initial poll after delay
   let isFirstPoll = true;
   const initialPoll = async () => {
-    console.log('⏰ Starting initial poll after page load...');
     await pollForUpdates(isFirstPoll);
     isFirstPoll = false;
   };
   
-  setTimeout(initialPoll, 5000); // Wait 5 seconds after page load
+  setTimeout(initialPoll, 5000);
   
+  // Polling interval (fallback)
   const intervalId = setInterval(() => {
-    // Only start new poll if previous one is done
     if (!isPolling) {
       pollForUpdates(false);
-    } else {
-      console.log('⏸️ Skipping scheduled poll - previous poll still running');
     }
   }, POLL_INTERVAL);
 
-  // Return cleanup function
+  // Cleanup function
   return () => {
+    wsCleanup();
     clearInterval(intervalId);
     isPolling = false;
     console.log('🛑 Stopped real-time sync');
