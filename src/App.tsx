@@ -35,21 +35,27 @@ const MaintenanceWrapper = ({ children }: { children: React.ReactNode }) => {
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
 
   useEffect(() => {
-    // Check maintenance mode on mount
-    const checkMaintenanceMode = () => {
-      const settings = loadSiteSettings();
-      setIsMaintenanceMode(settings.maintenanceMode);
+    // Check maintenance mode from backend on mount
+    const checkMaintenanceMode = async () => {
+      try {
+        const { getDataFromBackend } = await import('@/lib/backend-api');
+        const settings = await getDataFromBackend('site-settings');
+        if (settings && typeof settings === 'object' && 'maintenanceMode' in settings) {
+          setIsMaintenanceMode(!!(settings as any).maintenanceMode);
+        }
+      } catch (error) {
+        console.error('Error loading maintenance mode:', error);
+      }
     };
 
     checkMaintenanceMode();
 
-    // Listen for storage changes (when settings are updated)
+    // Listen for settings updates
     const handleStorageChange = () => {
       checkMaintenanceMode();
     };
 
     window.addEventListener('storage', handleStorageChange);
-    // Custom event for same-tab updates
     window.addEventListener('maintenanceModeChange', handleStorageChange);
 
     return () => {

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { loadSiteSettings, SiteSettings, loadThemeSettingsSync, ThemeSettings, saveUserData, saveStats, saveProjects, saveBlogPosts, saveSkills, saveExperiences, saveAchievements, saveSiteSettings } from '@/lib/storage';
+import { SiteSettings, ThemeSettings } from '@/lib/storage';
 import { hexToHsl } from '@/lib/theme-utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Moon, Sun, Menu, Home, User, Briefcase, PenTool, Mail } from 'lucide-react';
 import Footer from './Footer';
 import MetadataManager from './MetadataManager';
 import { startRealtimeSync } from '@/lib/realtime-sync';
+import { getDataFromBackend } from '@/lib/backend-api';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,8 +16,19 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const [isDark, setIsDark] = useState(false);
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(loadSiteSettings());
-  const [themeSettings, setThemeSettings] = useState<ThemeSettings>(loadThemeSettingsSync());
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({
+    siteName: 'Portfolio',
+    siteDescription: '',
+    seoKeywords: [],
+    googleAnalyticsId: '',
+    maintenanceMode: false
+  });
+  const [themeSettings, setThemeSettings] = useState<ThemeSettings>({
+    primaryColor: '#2563eb',
+    secondaryColor: '#4f46e5',
+    fontFamily: 'system-ui',
+    darkMode: false
+  });
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
@@ -28,7 +40,10 @@ const Layout = ({ children }: LayoutProps) => {
   }, []);
 
   useEffect(() => {
-    const load = () => setSiteSettings(loadSiteSettings());
+    const load = async () => {
+      const settings = await getDataFromBackend('site-settings');
+      if (settings) setSiteSettings(settings as SiteSettings);
+    };
     load();
     const onUpdate = () => load();
     window.addEventListener('portfolioDataUpdated', onUpdate);
@@ -37,28 +52,13 @@ const Layout = ({ children }: LayoutProps) => {
 
   // Load and listen for theme settings updates
   useEffect(() => {
-    // Load from theme.json (for GitHub Pages) or localStorage
-    const loadTheme = async () => {
-      try {
-        const { loadThemeSettings } = await import('@/lib/storage');
-        const theme = await loadThemeSettings();
-        setThemeSettings(theme);
-      } catch (error) {
-        console.error('Error loading theme:', error);
-        setThemeSettings(loadThemeSettingsSync());
-      }
-    };
-    
-    loadTheme();
-    
-    const onThemeUpdate = (e: CustomEvent) => {
-      if (e.detail?.key === 'portfolio_theme_settings') {
-        // Reload from theme.json if it exists, otherwise use localStorage
-        loadTheme();
-      }
-    };
-    window.addEventListener('portfolioDataUpdated', onThemeUpdate as EventListener);
-    return () => window.removeEventListener('portfolioDataUpdated', onThemeUpdate as EventListener);
+    // Theme settings kept as defaults (no backend storage for theme)
+    setThemeSettings({
+      primaryColor: '#2563eb',
+      secondaryColor: '#4f46e5',
+      fontFamily: 'system-ui',
+      darkMode: false
+    });
   }, []);
 
   // Initialize WebSocket real-time sync for frontend updates

@@ -1,12 +1,23 @@
 import { Construction, Clock, Mail } from 'lucide-react';
-import { loadSiteSettings } from '@/lib/storage';
+import { SiteSettings } from '@/lib/storage';
+import { getDataFromBackend } from '@/lib/backend-api';
 import { useEffect, useState } from 'react';
 
 const Maintenance = () => {
-  const [settings, setSettings] = useState(loadSiteSettings());
+  const [settings, setSettings] = useState<SiteSettings>({
+    siteName: 'Portfolio',
+    siteDescription: '',
+    seoKeywords: [],
+    googleAnalyticsId: '',
+    maintenanceMode: false
+  });
 
   useEffect(() => {
-    setSettings(loadSiteSettings());
+    const load = async () => {
+      const data = await getDataFromBackend('site-settings');
+      if (data) setSettings(data as SiteSettings);
+    };
+    load();
   }, []);
 
   return (

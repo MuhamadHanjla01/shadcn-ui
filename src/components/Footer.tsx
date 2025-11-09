@@ -1,17 +1,35 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Github, Linkedin, Twitter, Mail, Heart } from 'lucide-react';
-import { loadSiteSettings, loadUserData } from '@/lib/storage';
+import { SiteSettings } from '@/lib/storage';
 import { userData as initialUserData } from '@/lib/data';
+import { getDataFromBackend } from '@/lib/backend-api';
 
 const Footer = () => {
-  const [siteSettings, setSiteSettings] = useState(loadSiteSettings());
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({
+    siteName: 'Portfolio',
+    siteDescription: '',
+    seoKeywords: [],
+    googleAnalyticsId: '',
+    maintenanceMode: false,
+    footerEnabled: true,
+    footerText: '© 2024 All rights reserved.',
+    footerLinks: []
+  });
   const [userData, setUserData] = useState(initialUserData);
 
   useEffect(() => {
-    const loadData = () => {
-      setSiteSettings(loadSiteSettings());
-      setUserData(loadUserData(initialUserData));
+    const loadData = async () => {
+      try {
+        const [settings, user] = await Promise.all([
+          getDataFromBackend('site-settings'),
+          getDataFromBackend('user')
+        ]);
+        if (settings) setSiteSettings(settings as SiteSettings);
+        if (user) setUserData(user as typeof initialUserData);
+      } catch (error) {
+        // Silent fallback to defaults
+      }
     };
 
     loadData();
