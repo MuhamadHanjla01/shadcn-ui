@@ -32,15 +32,87 @@ import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { Input } from '@/components/ui/input';
 import NotificationDropdown from './NotificationDropdown';
 import { addNotification } from '@/lib/notification-service';
-import { getWebSocketUrl } from '@/lib/backend-api';
-import { ContactMessage } from '@/lib/storage';
+import { getWebSocketUrl, getDataFromBackend } from '@/lib/backend-api';
+import { ContactMessage, SiteSettings } from '@/lib/storage';
 
 const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const { auth, logout } = useAdminAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const messagesCountRef = useRef<number>(0);
+
+  // Load site settings for logo and favicon
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await getDataFromBackend('site-settings');
+        if (settings) {
+          setSiteSettings(settings as SiteSettings);
+          
+          // Update document title for admin panel
+          const siteName = settings.siteName || 'Portfolio';
+          document.title = `Admin Panel - ${siteName}`;
+          
+          // Update favicon to match frontend
+          const updateFavicon = (faviconUrl: string) => {
+            const existingIcon = document.querySelector("link[rel*='icon']");
+            if (existingIcon) {
+              existingIcon.setAttribute('href', faviconUrl);
+            } else {
+              const newIcon = document.createElement('link');
+              newIcon.rel = 'icon';
+              newIcon.type = 'image/x-icon';
+              newIcon.href = faviconUrl;
+              document.head.appendChild(newIcon);
+            }
+          };
+          
+          // Generate text favicon if needed
+          const generateTextFavicon = (text: string) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return '';
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 64, 64);
+            gradient.addColorStop(0, '#2563eb'); // blue-600
+            gradient.addColorStop(1, '#4f46e5'); // indigo-600
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 64, 64);
+            
+            // Text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 32px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text.slice(0, 3), 32, 32);
+            
+            return canvas.toDataURL('image/png');
+          };
+          
+          // Apply favicon
+          if (settings.logoMode === 'text' && settings.logoText) {
+            const faviconUrl = generateTextFavicon(settings.logoText);
+            updateFavicon(faviconUrl);
+          } else if (settings.logo) {
+            updateFavicon(settings.logo);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading site settings for admin:', error);
+      }
+    };
+    loadSettings();
+    
+    // Listen for settings updates
+    const onUpdate = () => loadSettings();
+    window.addEventListener('portfolioDataUpdated', onUpdate);
+    return () => window.removeEventListener('portfolioDataUpdated', onUpdate);
+  }, []);
 
   // Listen for new messages via WebSocket and create notifications
   useEffect(() => {
@@ -132,14 +204,24 @@ const AdminLayout = () => {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
+      {/* Logo - Use frontend logo */}
       <div className="p-6 border-b border-slate-200 dark:border-slate-700">
         <Link to="/admin" className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">AC</span>
-          </div>
+          {siteSettings?.logoMode === 'image' && siteSettings?.logo ? (
+            <div className="h-8 w-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+              <img src={siteSettings.logo} alt="Logo" className="h-full w-full object-cover" />
+            </div>
+          ) : (
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center">
+              <span className="text-white font-bold text-sm">
+                {siteSettings?.logoText?.slice(0, 3) || 'AC'}
+              </span>
+            </div>
+          )}
           <div>
-            <h2 className="font-bold text-lg text-slate-900 dark:text-white">Admin Panel</h2>
+            <h2 className="font-bold text-lg text-slate-900 dark:text-white">
+              {siteSettings?.siteName || 'Admin Panel'}
+            </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">Portfolio CMS</p>
           </div>
         </Link>
