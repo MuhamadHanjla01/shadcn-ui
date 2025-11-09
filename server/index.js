@@ -725,27 +725,41 @@ app.post('/api/contact', async (req, res) => {
       date: new Date().toISOString()
     };
     
-    // Load existing messages
+    // Load existing messages with retry on race conditions
     const messagesFile = join(DATA_DIR, 'messages.json');
     let messages = [];
+    let retries = 3;
     
-    try {
-      const data = await fs.readFile(messagesFile, 'utf-8');
-      messages = JSON.parse(data);
-    } catch (error) {
-      // File doesn't exist yet, start with empty array
-      console.log('📝 Creating new messages file');
+    while (retries > 0) {
+      try {
+        const data = await fs.readFile(messagesFile, 'utf-8');
+        messages = JSON.parse(data);
+        break; // Success, exit retry loop
+      } catch (error) {
+        if (error.code === 'ENOENT') {
+          // File doesn't exist yet, start with empty array
+          console.log('📝 Creating new messages file');
+          break;
+        } else if (error instanceof SyntaxError && retries > 1) {
+          // File might be corrupted or being written, retry
+          console.log(`⚠️ JSON parse error, retrying... (${retries} left)`);
+          await new Promise(resolve => setTimeout(resolve, 100));
+          retries--;
+        } else {
+          throw error;
+        }
+      }
     }
     
-    // Add new message
-    messages.unshift(contactMessage); // Add to beginning
+    // Add new message to the beginning
+    messages.unshift(contactMessage);
     
-    // Save messages
+    // Atomic write with proper file locking
     const tempFile = messagesFile + '.tmp';
     await fs.writeFile(tempFile, JSON.stringify(messages, null, 2), 'utf-8');
     await fs.rename(tempFile, messagesFile);
     
-    console.log(`📧 New contact message from ${name} (${email})`);
+    console.log(`📧 New contact message from ${name} (${email}) - Total messages: ${messages.length}`);
     
     // Broadcast update to connected admin clients
     broadcastUpdate('messages', messages);

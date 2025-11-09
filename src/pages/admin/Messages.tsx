@@ -20,11 +20,16 @@ const Messages = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   // Load messages from backend
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true);
+      // Only show loading spinner on first load
+      if (!hasLoadedOnce) {
+        setIsLoading(true);
+      }
+      
       try {
         const backendMessages = await getDataFromBackend('messages');
         if (backendMessages && Array.isArray(backendMessages)) {
@@ -39,6 +44,7 @@ const Messages = () => {
         setMessages([]);
       } finally {
         setIsLoading(false);
+        setHasLoadedOnce(true);
       }
     };
 
@@ -115,58 +121,79 @@ const Messages = () => {
   );
 
   const markAsRead = async (id: string) => {
+    // Optimistically update UI
     const updated = messages.map(msg =>
       msg.id === id ? { ...msg, read: true } : msg
     );
     setMessages(updated);
     
-    // Save to backend
+    // Save to backend using saveDataToBackend
     try {
-      const getApiBaseUrl = () => {
-        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-          return 'http://localhost:3001';
-        }
-        return 'https://shadcn-ui-production-8f2d.up.railway.app';
-      };
-      
-      await fetch(`${getApiBaseUrl()}/api/data/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      });
+      const { saveDataToBackend } = await import('@/lib/backend-api');
+      await saveDataToBackend('messages', updated);
+      console.log('✅ Message marked as read and saved to backend');
     } catch (error) {
-      console.error('Error saving messages:', error);
+      console.error('❌ Error saving messages:', error);
+      // Revert optimistic update on error
+      setMessages(messages);
     }
   };
 
   const deleteMessage = async (id: string) => {
+    // Optimistically update UI
+    const previousMessages = [...messages];
     const updated = messages.filter(msg => msg.id !== id);
     setMessages(updated);
     
-    // Save to backend
-    try {
-      const getApiBaseUrl = () => {
-        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-          return 'http://localhost:3001';
-        }
-        return 'https://shadcn-ui-production-8f2d.up.railway.app';
-      };
-      
-      await fetch(`${getApiBaseUrl()}/api/data/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      });
-    } catch (error) {
-      console.error('Error deleting message:', error);
-    }
-    
+    // Clear selected message if it was deleted
     if (selectedMessage?.id === id) {
       setSelectedMessage(null);
+    }
+    
+    // Save to backend using saveDataToBackend
+    try {
+      const { saveDataToBackend } = await import('@/lib/backend-api');
+      await saveDataToBackend('messages', updated);
+      console.log('✅ Message deleted and saved to backend');
+    } catch (error) {
+      console.error('❌ Error deleting message:', error);
+      // Revert optimistic update on error
+      setMessages(previousMessages);
     }
   };
 
   const unreadCount = messages.filter(m => !m.read).length;
+
+  // Show loading skeleton on initial load only
+  if (isLoading && !hasLoadedOnce) {
+    return (
+      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Messages</h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">
+              Contact form submissions from your portfolio
+            </p>
+          </div>
+          <div className="h-6 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-4">
+            <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              ))}
+            </div>
+          </div>
+          <div className="lg:col-span-2">
+            <div className="h-96 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-8 max-w-7xl mx-auto">
