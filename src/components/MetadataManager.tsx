@@ -140,6 +140,10 @@ const MetadataManager = () => {
         imageUrl = window.location.origin + imageUrl;
       }
       updateOgTag('og:image', imageUrl);
+      updateOgTag('og:image:secure_url', imageUrl);
+      updateOgTag('og:image:type', 'image/jpeg');
+      updateOgTag('og:image:width', '1200');
+      updateOgTag('og:image:height', '630');
     }
     
     updateOgTag('og:url', window.location.href);
@@ -176,6 +180,10 @@ const MetadataManager = () => {
     if (siteSettings.twitterHandle) {
       updateTwitterTag('twitter:site', siteSettings.twitterHandle);
       updateTwitterTag('twitter:creator', siteSettings.twitterHandle);
+    } else {
+      // Default Twitter handles for fallback
+      updateTwitterTag('twitter:site', '@portfolio');
+      updateTwitterTag('twitter:creator', '@portfolio');
     }
   };
 
