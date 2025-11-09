@@ -81,15 +81,24 @@
             settingsResponse.json().then(result => {
               if (result.success && result.data) {
                 parsedSettings = result.data;
+                
+                // Update favicon immediately
+                if (parsedSettings.logoMode === 'text' && parsedSettings.logoText) {
+                  const faviconUrl = generateTextFavicon(parsedSettings.logoText);
+                  updateFavicon(faviconUrl);
+                } else if (parsedSettings.logo) {
+                  updateFavicon(parsedSettings.logo);
+                }
+                
+                // Update OG tags with both user and settings data
                 updateOGTags(parsedUser, parsedSettings);
               }
             }).catch(() => {});
           }
         }).catch(() => {});
         
-        // Update immediately with backend data when available
+        // Update OG tags with backend data when available
         function updateOGTags(parsedUser, parsedSettings) {
-        
           // Build dynamic meta data
           let ogTitle, ogDescription, ogImage;
           
@@ -107,14 +116,16 @@
             ogDescription = (parsedUser.tagline || parsedUser.name + ' - ' + parsedUser.title + ' Portfolio');
           }
           
+          // Priority: custom OG image > user profile image
           if (parsedSettings && parsedSettings.ogImage) {
             ogImage = parsedSettings.ogImage;
           } else if (parsedUser && parsedUser.profileImage) {
             ogImage = parsedUser.profileImage;
-            // Convert relative URLs to absolute
-            if (!ogImage.startsWith('http') && !ogImage.startsWith('data:')) {
-              ogImage = window.location.origin + (ogImage.startsWith('/') ? ogImage : '/' + ogImage);
-            }
+          }
+          
+          // Convert relative URLs to absolute for social media crawlers
+          if (ogImage && !ogImage.startsWith('http') && !ogImage.startsWith('data:')) {
+            ogImage = window.location.origin + (ogImage.startsWith('/') ? ogImage : '/' + ogImage);
           }
           
           // Update OG tags immediately
@@ -142,6 +153,21 @@
             updateMetaTag('meta[property="og:site_name"]', parsedSettings.siteName);
           } else if (parsedUser && parsedUser.name) {
             updateMetaTag('meta[property="og:site_name"]', parsedUser.name);
+          }
+        }
+        
+        // Helper to update favicon
+        function updateFavicon(faviconUrl) {
+          const existingIcon = document.querySelector("link[rel*='icon']");
+          if (existingIcon) {
+            existingIcon.setAttribute('href', faviconUrl);
+            existingIcon.setAttribute('type', 'image/x-icon');
+          } else {
+            const newIcon = document.createElement('link');
+            newIcon.rel = 'icon';
+            newIcon.type = 'image/x-icon';
+            newIcon.href = faviconUrl;
+            document.head.appendChild(newIcon);
           }
         }
         
