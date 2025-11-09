@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -31,18 +31,83 @@ import {
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { Input } from '@/components/ui/input';
 import NotificationDropdown from './NotificationDropdown';
-import { notificationService } from '@/lib/notification-service';
+import { addNotification } from '@/lib/notification-service';
+import { getWebSocketUrl } from '@/lib/backend-api';
+import { ContactMessage } from '@/lib/storage';
 
 const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { auth, logout } = useAdminAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const messagesCountRef = useRef<number>(0);
 
-  // Initialize notification listener
+  // Listen for new messages via WebSocket and create notifications
   useEffect(() => {
-    notificationService.initNotificationListener();
-    notificationService.generateSystemNotifications();
+    const wsUrl = getWebSocketUrl();
+    console.log('🔔 Admin: Setting up WebSocket for notifications...');
+    
+    let ws: WebSocket | null = null;
+    
+    try {
+      ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('✅ Admin: Notification WebSocket connected');
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          
+          // Listen for messages updates
+          if (message.type === 'update' && message.dataType === 'messages') {
+            console.log('📨 Admin: Messages update received via WebSocket');
+            
+            if (message.data && Array.isArray(message.data)) {
+              const messages = message.data as ContactMessage[];
+              const currentCount = messages.length;
+              const previousCount = messagesCountRef.current;
+              
+              // If there are more messages than before, create notification
+              if (previousCount > 0 && currentCount > previousCount) {
+                const latestMessage = messages[0]; // Messages are sorted newest first
+                if (latestMessage && !latestMessage.read) {
+                  addNotification(
+                    'message',
+                    'New Contact Message',
+                    `${latestMessage.name}: ${latestMessage.message.substring(0, 50)}${latestMessage.message.length > 50 ? '...' : ''}`,
+                    '/admin/messages'
+                  );
+                  console.log('🔔 Notification created for new message from:', latestMessage.name);
+                }
+              }
+              
+              // Update the count reference
+              messagesCountRef.current = currentCount;
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error parsing WebSocket message:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('❌ Notification WebSocket error:', error);
+      };
+      
+      ws.onclose = () => {
+        console.log('🔌 Notification WebSocket disconnected');
+      };
+    } catch (error) {
+      console.error('❌ Failed to create notification WebSocket:', error);
+    }
+
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
   }, []);
 
   const navigation = [
