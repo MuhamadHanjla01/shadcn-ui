@@ -72,7 +72,9 @@ export type DataType = 'user' | 'stats' | 'skills' | 'experiences' | 'achievemen
 export async function getDataFromBackend<T>(type: DataType, retryCount: number = 0): Promise<T | null> {
   try {
     const baseUrl = getApiBaseUrl();
-    const url = `${baseUrl}/api/data/${type}`;
+    // Add timestamp to force mobile browsers to bypass cache
+    const timestamp = Date.now();
+    const url = `${baseUrl}/api/data/${type}?_t=${timestamp}`;
     
     console.log(`🔗 Attempting to fetch ${type} from: ${url} (attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
     
@@ -81,7 +83,8 @@ export async function getDataFromBackend<T>(type: DataType, retryCount: number =
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
+        'Pragma': 'no-cache',
+        'Expires': '0'
       },
       cache: 'no-store'
     });
@@ -110,7 +113,7 @@ export async function getDataFromBackend<T>(type: DataType, retryCount: number =
     console.log(`📦 Response data for ${type}:`, result.success ? '✅ Success' : '❌ Failed', result);
     
     if (result.success && result.data !== null) {
-      console.log(`✅ Loaded ${type} from backend API`);
+      console.log(`✅ Loaded ${type} from backend API (fresh from server)`);
       return result.data as T;
     }
     
