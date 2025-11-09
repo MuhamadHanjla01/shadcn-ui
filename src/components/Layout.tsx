@@ -3,8 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { SiteSettings, ThemeSettings } from '@/lib/storage';
 import { hexToHsl } from '@/lib/theme-utils';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Moon, Sun, Menu, Home, User, Briefcase, PenTool, Mail } from 'lucide-react';
+import { Moon, Sun, Home, User, Briefcase, PenTool, Mail } from 'lucide-react';
 import Footer from './Footer';
 import MetadataManager from './MetadataManager';
 import { startRealtimeSync } from '@/lib/realtime-sync';
@@ -23,7 +22,6 @@ const Layout = ({ children }: LayoutProps) => {
     fontFamily: 'system-ui',
     darkMode: false
   });
-  const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
 
@@ -142,6 +140,7 @@ const Layout = ({ children }: LayoutProps) => {
       <MetadataManager />
       {/* Show loading skeleton for header on initial load */}
       {isLoading || !siteSettings ? (
+        <>
         <header className="sticky top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-md dark:bg-slate-900/80 dark:border-slate-700/50">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex h-16 items-center justify-between">
@@ -160,6 +159,19 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
           </div>
         </header>
+        
+        {/* Bottom Tab Bar Skeleton - Mobile Only */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-700">
+          <div className="grid grid-cols-5 h-16">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex flex-col items-center justify-center gap-1">
+                <div className="h-9 w-9 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
+                <div className="h-3 w-10 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+        </nav>
+        </>
       ) : (
         <header className="sticky top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-md dark:bg-slate-900/80 dark:border-slate-700/50">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -219,8 +231,8 @@ const Layout = ({ children }: LayoutProps) => {
               })}
             </nav>
 
-            {/* Theme Toggle & Mobile Menu */}
-            <div className="flex items-center space-x-2">
+            {/* Theme Toggle - Desktop and Mobile */}
+            <div className="flex items-center">
               <Button
                 variant="ghost"
                 size="sm"
@@ -233,53 +245,63 @@ const Layout = ({ children }: LayoutProps) => {
                   <Moon className="h-4 w-4 text-slate-600" />
                 )}
               </Button>
-
-              {/* Mobile Menu */}
-              <Sheet open={isOpen} onOpenChange={setIsOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="md:hidden h-9 w-9 p-0">
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-72">
-                  <div className="flex flex-col space-y-4 mt-8">
-                    {navigation.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={item.name}
-                          to={item.href}
-                          onClick={() => setIsOpen(false)}
-                          className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                            isActive(item.href)
-                              ? ''
-                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800'
-                          }`}
-                          style={isActive(item.href) ? {
-                            backgroundColor: isDark 
-                              ? `${themeSettings.primaryColor || '#2563eb'}40` 
-                              : `${themeSettings.primaryColor || '#2563eb'}20`,
-                            color: themeSettings.primaryColor || '#2563eb'
-                          } : {}}
-                        >
-                          <Icon className="h-5 w-5" />
-                          <span>{item.name}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </SheetContent>
-              </Sheet>
             </div>
           </div>
         </div>
       </header>
       )}
 
-      {/* Main Content */}
-      <main className="flex-1">
+      {/* Main Content - Add bottom padding on mobile for tab bar */}
+      <main className="flex-1 pb-20 md:pb-0">
         {children}
       </main>
+
+      {/* Bottom Tab Bar - Mobile & Tablet Only (Hidden during loading) */}
+      {!isLoading && siteSettings && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-700 safe-area-inset-bottom">
+        <div className="grid grid-cols-5 h-16">
+          {navigation.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className="flex flex-col items-center justify-center gap-1 transition-all duration-200"
+              >
+                <div 
+                  className={`p-2 rounded-xl transition-all duration-200 ${
+                    active ? 'scale-110' : 'scale-100 hover:scale-105'
+                  }`}
+                  style={active ? {
+                    backgroundColor: isDark 
+                      ? `${themeSettings.primaryColor || '#2563eb'}40` 
+                      : `${themeSettings.primaryColor || '#2563eb'}20`,
+                  } : {}}
+                >
+                  <Icon 
+                    className="h-5 w-5 transition-colors" 
+                    style={active ? {
+                      color: themeSettings.primaryColor || '#2563eb'
+                    } : {}}
+                  />
+                </div>
+                <span 
+                  className={`text-xs font-medium transition-all duration-200 ${
+                    active ? 'scale-100 opacity-100' : 'scale-90 opacity-60'
+                  }`}
+                  style={active ? {
+                    color: themeSettings.primaryColor || '#2563eb'
+                  } : {}}
+                >
+                  {item.name}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+      )}
 
       {/* Footer - Only show if enabled in settings */}
       {!isLoading && siteSettings && siteSettings.footerEnabled !== false && <Footer />}
