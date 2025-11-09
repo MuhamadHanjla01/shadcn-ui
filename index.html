@@ -68,34 +68,36 @@
         Promise.all([
           fetch(backendUrl + '/api/data/user', { cache: 'no-store' }).catch(() => null),
           fetch(backendUrl + '/api/data/site-settings', { cache: 'no-store' }).catch(() => null)
-        ]).then(([userResponse, settingsResponse]) => {
+        ]).then(async ([userResponse, settingsResponse]) => {
           if (userResponse && userResponse.ok) {
-            userResponse.json().then(result => {
+            try {
+              const result = await userResponse.json();
               if (result.success && result.data) {
                 parsedUser = result.data;
-                updateOGTags(parsedUser, parsedSettings);
               }
-            }).catch(() => {});
+            } catch (e) {
+              console.warn('Error parsing user data:', e);
+            }
           }
+          
           if (settingsResponse && settingsResponse.ok) {
-            settingsResponse.json().then(result => {
+            try {
+              const result = await settingsResponse.json();
               if (result.success && result.data) {
                 parsedSettings = result.data;
-                
-                // Update favicon immediately
-                if (parsedSettings.logoMode === 'text' && parsedSettings.logoText) {
-                  const faviconUrl = generateTextFavicon(parsedSettings.logoText);
-                  updateFavicon(faviconUrl);
-                } else if (parsedSettings.logo) {
-                  updateFavicon(parsedSettings.logo);
-                }
-                
-                // Update OG tags with both user and settings data
-                updateOGTags(parsedUser, parsedSettings);
               }
-            }).catch(() => {});
+            } catch (e) {
+              console.warn('Error parsing settings data:', e);
+            }
           }
-        }).catch(() => {});
+          
+          // Always update OG tags with whatever data we have
+          updateOGTags(parsedUser, parsedSettings);
+        }).catch((error) => {
+          console.warn('Error fetching backend data:', error);
+          // Still update with whatever we have
+          updateOGTags(parsedUser, parsedSettings);
+        });
         
         // Update OG tags with backend data when available
         function updateOGTags(parsedUser, parsedSettings) {
@@ -183,79 +185,6 @@
         // Update title and other settings if available
         if (parsedSettings && parsedSettings.metaTitle) {
           document.title = parsedSettings.metaTitle;
-          
-          // Generate favicon from text
-          function generateTextFavicon(text) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 64;
-            canvas.height = 64;
-            const ctx = canvas.getContext('2d');
-            
-            if (!ctx) return '';
-            
-            // Background
-            ctx.fillStyle = '#2563eb'; // blue-600
-            ctx.fillRect(0, 0, 64, 64);
-            
-            // Text
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 32px Arial, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, 32, 32);
-            
-            return canvas.toDataURL('image/png');
-          }
-
-          // Update favicon using theme logo (image or text mode)
-          var faviconUrl = '';
-          if (parsedSettings.logoMode === 'text' && parsedSettings.logoText) {
-            // Generate favicon from text
-            faviconUrl = generateTextFavicon(parsedSettings.logoText);
-          } else if (parsedSettings.logo) {
-            // Use image logo
-            faviconUrl = parsedSettings.logo;
-          }
-          
-          if (faviconUrl) {
-            const existingIcon = document.querySelector("link[rel*='icon']");
-            if (existingIcon) {
-              existingIcon.setAttribute('href', faviconUrl);
-              existingIcon.setAttribute('type', 'image/x-icon');
-            } else {
-              const newIcon = document.createElement('link');
-              newIcon.rel = 'icon';
-              newIcon.type = 'image/x-icon';
-              newIcon.href = faviconUrl;
-              document.head.appendChild(newIcon);
-            }
-          }
-          
-          // Update meta description
-          if (parsedSettings.metaDescription) {
-            let metaDesc = document.querySelector('meta[name="description"]');
-            if (metaDesc) {
-              metaDesc.setAttribute('content', parsedSettings.metaDescription);
-            } else {
-              metaDesc = document.createElement('meta');
-              metaDesc.name = 'description';
-              metaDesc.content = parsedSettings.metaDescription;
-              document.head.appendChild(metaDesc);
-            }
-          }
-          
-          // Update meta keywords
-          if (parsedSettings.metaKeywords) {
-            let metaKeys = document.querySelector('meta[name="keywords"]');
-            if (metaKeys) {
-              metaKeys.setAttribute('content', parsedSettings.metaKeywords);
-            } else {
-              metaKeys = document.createElement('meta');
-              metaKeys.name = 'keywords';
-              metaKeys.content = parsedSettings.metaKeywords;
-              document.head.appendChild(metaKeys);
-            }
-          }
         }
       } catch (e) {
         // Silently fail - React will handle it
