@@ -209,6 +209,14 @@ const Home = () => {
     }
   }, [currentIndex, fullText]);
 
+  // Reset typing animation when userData changes (new data loaded)
+  useEffect(() => {
+    if (userData) {
+      setDisplayText('');
+      setCurrentIndex(0);
+    }
+  }, [userData?.tagline]); // Only reset when tagline changes
+
   const socialLinks = userData ? [
     { key: 'github', icon: Github, href: userData.socialMedia.github, label: 'GitHub' },
     { key: 'linkedin', icon: Linkedin, href: userData.socialMedia.linkedin, label: 'LinkedIn' },
@@ -224,7 +232,7 @@ const Home = () => {
   const textAlign = heroLayout === 'left' ? 'text-left' : heroLayout === 'right' ? 'text-right' : 'text-center';
 
   // Show animated skeleton loading until data is loaded
-  if (isLoading) {
+  if (isLoading || !userData || !stats) {
     return (
       <div className="relative overflow-hidden">
         {/* Animated Background Elements - Same as actual page */}
