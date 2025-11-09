@@ -31,47 +31,9 @@ const ThemeSettingsPage = () => {
       saveThemeSettings(settings);
       saveSiteSettings(siteSettings);
       
-      // Auto-commit to GitHub if enabled (non-blocking)
-      const { isGitHubSyncConfigured, exportAndCommitToGitHub } = await import('@/lib/github-sync');
-      if (isGitHubSyncConfigured()) {
-        // Run GitHub sync in background without blocking save operation
-        // Load all data to sync site-settings
-        const { loadUserData } = await import('@/lib/storage');
-        const { userData: defaultUserData } = await import('@/lib/data');
-        const userData = loadUserData(defaultUserData);
-        
-        exportAndCommitToGitHub(
-          {
-            'site-settings': siteSettings,
-            'user': userData // Include user data to maintain consistency
-          },
-          'Update theme and site settings (automatic sync)'
-        ).then((result) => {
-          if (result.success) {
-            toast.success('Changes saved and published!', {
-              description: 'Users will see updates in 1-2 minutes'
-            });
-          } else {
-            console.warn('GitHub sync note:', result.message);
-            if (!result.message.includes('Cannot connect to backend API') && 
-                !result.message.includes('backend server is running')) {
-              toast.warning('Saved locally. GitHub sync unavailable', {
-                description: 'Data saved successfully. Start backend server to enable auto-sync.'
-              });
-            }
-          }
-        }).catch((error: any) => {
-          console.warn('GitHub sync error (non-blocking):', error.message || 'Unknown error');
-        });
-        
-        toast.success('Changes saved successfully!', {
-          description: 'Syncing to GitHub in background...'
-        });
-      } else {
-        toast.success('Saved locally!', {
-          description: 'Enable GitHub Auto-Sync in Settings to publish changes'
-        });
-      }
+      toast.success('Theme settings saved successfully!', {
+        description: 'Changes applied locally. Use Settings page to publish to GitHub.'
+      });
       
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
