@@ -20,6 +20,7 @@ const Home = () => {
   const [heroLayout, setHeroLayout] = useState<'left'|'center'|'right'>('center');
   const [socialVisibility, setSocialVisibility] = useState({ github: true, linkedin: true, twitter: true, email: true });
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const handleResumeDownload = async (e: any) => {
     if (!userData.resume) {
@@ -63,12 +64,15 @@ const Home = () => {
 
     const loadData = async () => {
       console.log('📥 Loading home data from backend only (no cache)...');
-      setIsLoading(true);
+      if (!hasLoadedOnce) {
+        setIsLoading(true);
+      }
       
       // Safety timeout: Force close loading screen after 3 seconds max
       const safetyTimeout = setTimeout(() => {
         console.log('⚠️ Loading timeout - forcing close');
         setIsLoading(false);
+        setHasLoadedOnce(true);
       }, 3000);
       
       try {
@@ -117,6 +121,7 @@ const Home = () => {
         // Clear safety timeout and close loading screen
         clearTimeout(safetyTimeout);
         setIsLoading(false);
+        setHasLoadedOnce(true);
       }
     };
 
@@ -232,8 +237,8 @@ const Home = () => {
   const sectionJustify = heroLayout === 'left' ? 'justify-start' : heroLayout === 'right' ? 'justify-end' : 'justify-center';
   const textAlign = heroLayout === 'left' ? 'text-left' : heroLayout === 'right' ? 'text-right' : 'text-center';
 
-  // Show animated skeleton loading until data is loaded
-  if (isLoading || !userData || !stats) {
+  // Show animated skeleton loading ONLY on first load
+  if (isLoading && !hasLoadedOnce) {
     return (
       <div className="relative overflow-hidden">
         {/* Animated Background Elements - Same as actual page */}

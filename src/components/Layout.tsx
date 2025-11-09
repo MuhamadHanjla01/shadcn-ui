@@ -16,13 +16,7 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const [isDark, setIsDark] = useState(false);
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>({
-    siteName: 'Portfolio',
-    siteDescription: '',
-    seoKeywords: [],
-    googleAnalyticsId: '',
-    maintenanceMode: false
-  });
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>({
     primaryColor: '#2563eb',
     secondaryColor: '#4f46e5',
@@ -30,6 +24,7 @@ const Layout = ({ children }: LayoutProps) => {
     darkMode: false
   });
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
 
   useEffect(() => {
@@ -41,8 +36,12 @@ const Layout = ({ children }: LayoutProps) => {
 
   useEffect(() => {
     const load = async () => {
+      setIsLoading(true);
       const settings = await getDataFromBackend('site-settings');
-      if (settings) setSiteSettings(settings as SiteSettings);
+      if (settings) {
+        setSiteSettings(settings as SiteSettings);
+      }
+      setIsLoading(false);
     };
     load();
     const onUpdate = () => load();
@@ -141,10 +140,30 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-all duration-500 flex flex-col">
       <MetadataManager />
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-md dark:bg-slate-900/80 dark:border-slate-700/50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
+      {/* Show loading skeleton for header on initial load */}
+      {isLoading || !siteSettings ? (
+        <header className="sticky top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-md dark:bg-slate-900/80 dark:border-slate-700/50">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex h-16 items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-700 animate-pulse"></div>
+                <div className="h-6 w-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              </div>
+              <div className="hidden md:flex items-center space-x-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-8 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+                ))}
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="h-9 w-9 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </header>
+      ) : (
+        <header className="sticky top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-md dark:bg-slate-900/80 dark:border-slate-700/50">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
               {siteSettings.logoMode === 'image' && siteSettings.logo ? (
@@ -159,7 +178,7 @@ const Layout = ({ children }: LayoutProps) => {
                   }}
                 >
                   <span className="text-white font-bold text-sm">
-                    {(siteSettings.logoText || 'AC').slice(0, 3)}
+                    {(siteSettings.logoText || '').slice(0, 3) || 'AC'}
                   </span>
                 </div>
               )}
@@ -169,7 +188,7 @@ const Layout = ({ children }: LayoutProps) => {
                   backgroundImage: `linear-gradient(to right, ${themeSettings.primaryColor || '#2563eb'}, ${themeSettings.secondaryColor || '#4f46e5'})`
                 }}
               >
-                {siteSettings.siteName || 'Alex Chen'}
+                {siteSettings.siteName}
               </span>
             </Link>
 
@@ -255,6 +274,7 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
         </div>
       </header>
+      )}
 
       {/* Main Content */}
       <main className="flex-1">
@@ -262,7 +282,7 @@ const Layout = ({ children }: LayoutProps) => {
       </main>
 
       {/* Footer - Only show if enabled in settings */}
-      {siteSettings.footerEnabled !== false && <Footer />}
+      {!isLoading && siteSettings && siteSettings.footerEnabled !== false && <Footer />}
     </div>
   );
 };
