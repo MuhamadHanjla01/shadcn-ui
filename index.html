@@ -142,6 +142,10 @@
           
           if (ogImage) {
             updateMetaTag('meta[property="og:image"]', ogImage);
+            updateMetaTag('meta[property="og:image:secure_url"]', ogImage);
+            updateMetaTag('meta[property="og:image:type"]', 'image/jpeg');
+            updateMetaTag('meta[property="og:image:width"]', '1200');
+            updateMetaTag('meta[property="og:image:height"]', '630');
             updateMetaTag('meta[name="twitter:image"]', ogImage);
           }
           
@@ -154,6 +158,9 @@
           } else if (parsedUser && parsedUser.name) {
             updateMetaTag('meta[property="og:site_name"]', parsedUser.name);
           }
+          
+          // Ensure og:type is set
+          updateMetaTag('meta[property="og:type"]', 'website');
         }
         
         // Helper to update favicon
@@ -265,14 +272,21 @@
   <meta property="og:title" content="Portfolio - Full Stack Developer" />
   <meta property="og:description" content="Professional portfolio showcasing projects, skills, and experience" />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="" />
-  <meta property="og:url" content="" />
+  <meta property="og:image" content="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" />
+  <meta property="og:image:secure_url" content="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:url" content="https://muhamadhanjla01.github.io/shadcn-ui/" />
+  <meta property="og:site_name" content="Portfolio" />
 
   <!-- Twitter Card tags - Will be dynamically updated by MetadataManager -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Portfolio - Full Stack Developer" />
   <meta name="twitter:description" content="Professional portfolio showcasing projects, skills, and experience" />
-  <meta name="twitter:image" content="" />
+  <meta name="twitter:image" content="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" />
+  <meta name="twitter:site" content="@portfolio" />
+  <meta name="twitter:creator" content="@portfolio" />
 
   <!-- Single Page Apps for GitHub Pages -->
   <!-- This script checks for a redirect and restores the original URL -->
