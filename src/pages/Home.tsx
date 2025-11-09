@@ -212,69 +212,83 @@ const Home = () => {
   if (isLoading || !userData) {
     return (
       <div className="relative overflow-hidden">
-        {/* Animated Background Elements */}
+        {/* Animated Background Elements - Same as actual page */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }}></div>
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400/10 to-blue-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.25s' }}></div>
         </div>
 
-        {/* Cinematic Loading Animation */}
+        {/* Hero Section - EXACT same layout as actual page */}
         <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            {/* Profile Image - Scale + Fade In */}
-            <div className="relative inline-block animate-in zoom-in fade-in duration-700" style={{ animationDelay: '0s' }}>
-              <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto rounded-full bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 animate-pulse"></div>
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800 rounded-full animate-pulse"></div>
+          <div className="max-w-4xl mx-auto text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            {/* Profile Image - With border like actual */}
+            <div className="relative inline-block text-center animate-in zoom-in fade-in duration-700" style={{ animationDelay: '0s' }}>
+              <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto rounded-full overflow-hidden border-4 border-white/50 shadow-2xl dark:border-slate-700/50 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 animate-pulse"></div>
+              <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-green-200 to-emerald-200 dark:from-green-800 dark:to-emerald-800 rounded-full flex items-center justify-center animate-pulse"></div>
             </div>
 
-            {/* Name - Slide from Bottom */}
+            {/* Name and Title - Exact spacing */}
             <div className="space-y-4 animate-in slide-in-from-bottom-8 fade-in duration-700" style={{ animationDelay: '0.2s' }}>
-              <div className="h-12 sm:h-16 lg:h-20 w-3/4 mx-auto bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 rounded-lg animate-pulse"></div>
+              {/* Name - text-4xl sm:text-6xl lg:text-7xl height */}
+              <div className="h-10 sm:h-16 lg:h-20 w-3/4 mx-auto bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 rounded-lg animate-pulse"></div>
               
-              {/* Title Badge - Slide from Bottom */}
-              <div className="flex justify-center animate-in slide-in-from-bottom-4 fade-in duration-700" style={{ animationDelay: '0.4s' }}>
-                <div className="h-10 w-64 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-full animate-pulse"></div>
+              {/* Title Badge - space-y-2 */}
+              <div className="space-y-2">
+                <div className="flex justify-center animate-in slide-in-from-bottom-4 fade-in duration-700" style={{ animationDelay: '0.4s' }}>
+                  <div className="h-10 w-64 bg-gradient-to-r from-blue-100/80 to-indigo-100/80 dark:from-blue-900/50 dark:to-indigo-900/50 rounded-full animate-pulse"></div>
+                </div>
               </div>
             </div>
 
-            {/* Tagline - Slide from Left */}
-            <div className="animate-in slide-in-from-left-8 fade-in duration-700" style={{ animationDelay: '0.6s' }}>
-              <div className="h-8 w-2/3 mx-auto bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 rounded-lg animate-pulse"></div>
+            {/* Typing Animation Area - h-16 like actual */}
+            <div className="h-16 flex items-center justify-center animate-in slide-in-from-left-8 fade-in duration-700" style={{ animationDelay: '0.6s' }}>
+              <div className="h-7 sm:h-8 w-2/3 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 rounded-lg animate-pulse"></div>
             </div>
 
-            {/* Buttons - Slide from Bottom with Stagger */}
+            {/* CTA Buttons - Same gap-4 */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <div className="h-12 w-40 bg-gradient-to-r from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800 rounded-lg animate-pulse animate-in slide-in-from-bottom-6 fade-in duration-700" style={{ animationDelay: '0.8s' }}></div>
-              <div className="h-12 w-40 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 rounded-lg animate-pulse animate-in slide-in-from-bottom-6 fade-in duration-700" style={{ animationDelay: '1s' }}></div>
+              <div className="h-12 w-44 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg animate-pulse animate-in slide-in-from-bottom-6 fade-in duration-700" style={{ animationDelay: '0.8s' }}></div>
+              <div className="h-12 w-44 bg-white/80 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-lg animate-pulse animate-in slide-in-from-bottom-6 fade-in duration-700" style={{ animationDelay: '1s' }}></div>
             </div>
 
-            {/* Social Links - Pop In from Scale */}
-            <div className="flex gap-4 justify-center">
+            {/* Social Links - space-x-6 pt-8 with backdrop */}
+            <div className="flex justify-center space-x-6 pt-8">
               {[1, 2, 3, 4].map((i) => (
                 <div 
                   key={i} 
-                  className="h-10 w-10 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 rounded-full animate-pulse animate-in zoom-in fade-in duration-500" 
+                  className="p-3 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-white/20 dark:border-slate-700/20 shadow-sm animate-pulse animate-in zoom-in fade-in duration-500" 
                   style={{ animationDelay: `${1.2 + i * 0.1}s` }}
-                ></div>
+                >
+                  <div className="h-6 w-6 bg-slate-300 dark:bg-slate-600 rounded"></div>
+                </div>
               ))}
+            </div>
+
+            {/* Resume Download - pt-4 */}
+            <div className="pt-4 animate-in fade-in duration-700" style={{ animationDelay: '1.6s' }}>
+              <div className="inline-flex items-center space-x-2">
+                <div className="h-4 w-4 bg-slate-300 dark:bg-slate-600 rounded animate-pulse"></div>
+                <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Stats Section - Slide from Right with Stagger */}
+        {/* Quick Stats - grid-cols-2 md:grid-cols-4 gap-8 */}
         <section className="relative py-20 px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               {[1, 2, 3, 4].map((i) => (
                 <div 
                   key={i} 
-                  className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 space-y-3 animate-pulse animate-in slide-in-from-right-8 fade-in duration-700" 
-                  style={{ animationDelay: `${1.6 + i * 0.15}s` }}
+                  className="text-center space-y-2 p-6 rounded-2xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border border-white/20 dark:border-slate-700/20 animate-pulse animate-in slide-in-from-right-8 fade-in duration-700" 
+                  style={{ animationDelay: `${1.8 + i * 0.15}s` }}
                 >
-                  <div className="h-12 w-12 bg-gradient-to-r from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800 rounded-lg"></div>
-                  <div className="h-8 w-16 bg-slate-200 dark:bg-slate-600 rounded"></div>
-                  <div className="h-4 w-24 bg-slate-200 dark:bg-slate-600 rounded"></div>
+                  {/* Number */}
+                  <div className="h-9 sm:h-10 w-16 mx-auto bg-gradient-to-r from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800 rounded"></div>
+                  {/* Label */}
+                  <div className="h-4 w-24 mx-auto bg-slate-200 dark:bg-slate-600 rounded"></div>
                 </div>
               ))}
             </div>
