@@ -19,7 +19,7 @@
     "email": true
   },
   "favicon": "",
-  "footerText": "ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ© 2024 All rights reserved.",
+  "footerText": "ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ© 2024 All rights reserved.",
   "footerLinks": [
     {
       "label": "Privacy Policy",
@@ -31,9 +31,9 @@
     }
   ],
   "footerEnabled": false,
-  "contactEmail": "contact@example.com",
-  "contactPhone": "",
-  "contactAddress": "",
+  "contactEmail": "hanjla.muhamad@gmail.com",
+  "contactPhone": "+91 6202247418 , +977 9820795686",
+  "contactAddress": "chandini chowk,delhi",
   "metaTitle": "Muhamad Hanjla - Full Stack Developer",
   "metaDescription": "Professional portfolio showcasing my projects, skills, and experience in web development.",
   "metaKeywords": "portfolio, web developer, full stack, react, typescript",
