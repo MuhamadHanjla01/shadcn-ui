@@ -64,7 +64,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout:
   }
 }
 
-export type DataType = 'user' | 'stats' | 'skills' | 'experiences' | 'achievements' | 'projects' | 'blog-posts' | 'site-settings';
+export type DataType = 'user' | 'stats' | 'skills' | 'experiences' | 'achievements' | 'projects' | 'blog-posts' | 'site-settings' | 'messages';
 
 /**
  * Get portfolio data from backend API with retry logic

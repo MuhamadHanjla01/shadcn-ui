@@ -91,7 +91,8 @@ const DATA_FILES = {
   'achievements': 'achievements.json',
   'projects': 'projects.json',
   'blog-posts': 'blog-posts.json',
-  'site-settings': 'site-settings.json'
+  'site-settings': 'site-settings.json',
+  'messages': 'messages.json'
 };
 
 // Get data file path

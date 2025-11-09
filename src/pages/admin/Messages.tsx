@@ -11,15 +11,48 @@ import {
   Calendar,
   User
 } from 'lucide-react';
-import { loadMessages, saveMessages, ContactMessage } from '@/lib/storage';
+import { ContactMessage } from '@/lib/storage';
+import { getDataFromBackend } from '@/lib/backend-api';
+import { startRealtimeSync } from '@/lib/realtime-sync';
 
 const Messages = () => {
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Load messages from backend
   useEffect(() => {
-    setMessages(loadMessages());
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const backendMessages = await getDataFromBackend('messages');
+        if (backendMessages && Array.isArray(backendMessages)) {
+          setMessages(backendMessages as ContactMessage[]);
+          console.log('✅ Loaded messages from backend:', backendMessages.length);
+        } else {
+          setMessages([]);
+          console.log('ℹ️ No messages found');
+        }
+      } catch (error) {
+        console.error('❌ Error loading messages:', error);
+        setMessages([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+
+    // Listen for real-time updates
+    const cleanup = startRealtimeSync((updates) => {
+      if (updates.messages) {
+        console.log('📨 New messages received via WebSocket');
+        setMessages(updates.messages as ContactMessage[]);
+      }
+    });
+
+    return cleanup;
   }, []);
 
   const filteredMessages = messages.filter(msg =>
@@ -28,18 +61,53 @@ const Messages = () => {
     msg.subject.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
     const updated = messages.map(msg =>
       msg.id === id ? { ...msg, read: true } : msg
     );
     setMessages(updated);
-    saveMessages(updated);
+    
+    // Save to backend
+    try {
+      const getApiBaseUrl = () => {
+        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+          return 'http://localhost:3001';
+        }
+        return 'https://shadcn-ui-production-8f2d.up.railway.app';
+      };
+      
+      await fetch(`${getApiBaseUrl()}/api/data/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch (error) {
+      console.error('Error saving messages:', error);
+    }
   };
 
-  const deleteMessage = (id: string) => {
+  const deleteMessage = async (id: string) => {
     const updated = messages.filter(msg => msg.id !== id);
     setMessages(updated);
-    saveMessages(updated);
+    
+    // Save to backend
+    try {
+      const getApiBaseUrl = () => {
+        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+          return 'http://localhost:3001';
+        }
+        return 'https://shadcn-ui-production-8f2d.up.railway.app';
+      };
+      
+      await fetch(`${getApiBaseUrl()}/api/data/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+    }
+    
     if (selectedMessage?.id === id) {
       setSelectedMessage(null);
     }

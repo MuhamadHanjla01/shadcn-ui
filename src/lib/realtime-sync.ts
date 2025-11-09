@@ -123,6 +123,7 @@ function connectWebSocket(callback: (updates: any) => void): () => void {
           else if (dataType === 'skills') updates.skills = message.data;
           else if (dataType === 'experiences') updates.experiences = message.data;
           else if (dataType === 'achievements') updates.achievements = message.data;
+          else if (dataType === 'messages') updates.messages = message.data;
           
           if (Object.keys(updates).length > 0) {
             // Update hash with new data
@@ -183,6 +184,7 @@ export function startRealtimeSync(callback: (updates: {
   skills?: any;
   experiences?: any;
   achievements?: any;
+  messages?: any;
 }) => void) {
   if (window.location.pathname.includes('/admin')) {
     console.log('🛑 Skipping real-time sync - admin panel detected');
