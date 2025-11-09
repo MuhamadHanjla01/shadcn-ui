@@ -208,11 +208,68 @@ const Home = () => {
   const sectionJustify = heroLayout === 'left' ? 'justify-start' : heroLayout === 'right' ? 'justify-end' : 'justify-center';
   const textAlign = heroLayout === 'left' ? 'text-left' : heroLayout === 'right' ? 'text-right' : 'text-center';
 
-  // Show loading or nothing until data is loaded
+  // Show animated skeleton loading until data is loaded
   if (isLoading || !userData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="relative overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400/10 to-blue-400/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+        </div>
+
+        {/* Skeleton Loading */}
+        <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto text-center space-y-8 animate-in fade-in duration-500">
+            {/* Profile Image Skeleton */}
+            <div className="relative inline-block">
+              <div className="w-32 h-32 sm:w-40 sm:h-40 mx-auto rounded-full bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 animate-pulse"></div>
+              <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800 rounded-full animate-pulse"></div>
+            </div>
+
+            {/* Name Skeleton */}
+            <div className="space-y-4">
+              <div className="h-12 sm:h-16 lg:h-20 w-3/4 mx-auto bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 rounded-lg animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+              
+              {/* Title Badge Skeleton */}
+              <div className="flex justify-center">
+                <div className="h-10 w-64 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+            </div>
+
+            {/* Tagline Skeleton */}
+            <div className="h-8 w-2/3 mx-auto bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 rounded-lg animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+
+            {/* Buttons Skeleton */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <div className="h-12 w-40 bg-gradient-to-r from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800 rounded-lg animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+              <div className="h-12 w-40 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 rounded-lg animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+            </div>
+
+            {/* Social Links Skeleton */}
+            <div className="flex gap-4 justify-center">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-10 w-10 bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 rounded-full animate-pulse" style={{ animationDelay: `${0.6 + i * 0.1}s` }}></div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Stats Section Skeleton */}
+        <section className="relative py-20 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 space-y-3 animate-pulse" style={{ animationDelay: `${0.7 + i * 0.1}s` }}>
+                  <div className="h-12 w-12 bg-gradient-to-r from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800 rounded-lg"></div>
+                  <div className="h-8 w-16 bg-slate-200 dark:bg-slate-600 rounded"></div>
+                  <div className="h-4 w-24 bg-slate-200 dark:bg-slate-600 rounded"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </div>
     );
   }
