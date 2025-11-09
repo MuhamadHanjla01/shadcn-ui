@@ -105,12 +105,23 @@ function connectWebSocket(callback: (updates: any) => void): () => void {
         if (message.type === 'connected') {
           // Silent - already logged in onopen
         } else if (message.type === 'update') {
-          console.log('📡 Update:', message.dataType);
+          console.log('📡 Update received:', message.dataType);
           
-          // Clear cache for fresh data
+          // CRITICAL: Clear ALL cached data for this type to ensure fresh replacement
           const dataType = message.dataType;
           lastDataVersions.delete(dataType);
           hasInitialPolled.delete(dataType);
+          
+          // Also clear any related cached states
+          if (dataType === 'user' || dataType === 'site-settings') {
+            // Clear user-related caches
+            lastDataVersions.delete('user');
+            lastDataVersions.delete('site-settings');
+            hasInitialPolled.delete('user');
+            hasInitialPolled.delete('site-settings');
+          }
+          
+          console.log('🗑️ Cleared cache for:', dataType);
           
           // Map backend data types to frontend
           const updates: any = {};
@@ -126,13 +137,26 @@ function connectWebSocket(callback: (updates: any) => void): () => void {
           else if (dataType === 'messages') updates.messages = message.data;
           
           if (Object.keys(updates).length > 0) {
-            // Update hash with new data
+            // Set new hash with updated data
             if (message.data) {
               const newHash = getDataHash(message.data);
               lastDataVersions.set(dataType, newHash);
               hasInitialPolled.set(dataType, true);
+              console.log(`✅ Updated ${dataType} with new hash:`, newHash.substring(0, 10) + '...');
             }
+            
+            // Dispatch update to UI (this completely replaces old data)
             callback(updates);
+            
+            // Dispatch global event for other components
+            window.dispatchEvent(new CustomEvent('portfolioDataUpdated', {
+              detail: {
+                source: 'realtime-sync',
+                dataType: dataType,
+                data: updates,
+                timestamp: new Date().toISOString()
+              }
+            }));
           }
         }
       } catch (error) {
