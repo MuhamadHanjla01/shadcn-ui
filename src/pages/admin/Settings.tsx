@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,8 @@ import {
   Twitter,
   Share2
 } from 'lucide-react';
-import { loadSiteSettings, saveSiteSettings, SiteSettings, clearAllStorage } from '@/lib/storage';
+import { SiteSettings } from '@/lib/storage';
+import { getDataFromBackend, saveDataToBackend } from '@/lib/backend-api';
 import { exportDataToFile, getUploadInstructions } from '@/lib/data-sync';
 import { 
   loadGitHubConfig, 
@@ -41,7 +42,16 @@ import {
 import { toast } from 'sonner';
 
 const Settings = () => {
-  const [settings, setSettings] = useState<SiteSettings>(loadSiteSettings());
+  const [settings, setSettings] = useState<SiteSettings>({
+    siteName: 'Portfolio',
+    siteDescription: '',
+    seoKeywords: [],
+    googleAnalyticsId: '',
+    maintenanceMode: false,
+    footerEnabled: true,
+    footerText: '© 2024 All rights reserved.',
+    footerLinks: []
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [uploadingOgImage, setUploadingOgImage] = useState(false);
@@ -57,13 +67,29 @@ const Settings = () => {
   const [testingConnection, setTestingConnection] = useState(false);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(isGitHubSyncConfigured());
 
+  // Load settings from backend on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await getDataFromBackend('site-settings');
+        if (data) {
+          setSettings(data as SiteSettings);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        toast.error('Failed to load settings from backend');
+      }
+    };
+    loadSettings();
+  }, []);
+
   const handleSave = async () => {
     setIsSaving(true);
     setSaveStatus('idle');
 
     try {
-      // Save to localStorage first
-      saveSiteSettings(settings);
+      // Save to backend API
+      await saveDataToBackend('site-settings', settings);
       setSaveStatus('success');
       
       // Update favicon dynamically
@@ -96,13 +122,13 @@ const Settings = () => {
               description: 'Changes will be live in 1-2 minutes'
             });
           } else {
-            toast.warning('Settings saved locally, but GitHub sync failed', {
+            toast.warning('Settings saved to backend, but GitHub sync failed', {
               description: result.message
             });
           }
         } catch (error: any) {
           console.error('GitHub sync error:', error);
-          toast.warning('Settings saved locally, but GitHub sync failed', {
+          toast.warning('Settings saved to backend, but GitHub sync failed', {
             description: error.message || 'Unknown error'
           });
         }
@@ -116,7 +142,7 @@ const Settings = () => {
     } catch (error) {
       console.error('Error saving settings:', error);
       setSaveStatus('error');
-      toast.error('Failed to save settings');
+      toast.error('Failed to save settings to backend');
     } finally {
       setIsSaving(false);
     }
@@ -169,10 +195,26 @@ const Settings = () => {
     setTestingConnection(false);
   };
 
-  const handleReset = () => {
-    if (confirm('Are you sure you want to reset all data? This action cannot be undone.')) {
-      clearAllStorage();
-      window.location.reload();
+  const handleReset = async () => {
+    if (confirm('Are you sure you want to reset all site settings? This action cannot be undone.')) {
+      try {
+        const defaultSettings: SiteSettings = {
+          siteName: 'Portfolio',
+          siteDescription: '',
+          seoKeywords: [],
+          googleAnalyticsId: '',
+          maintenanceMode: false,
+          footerEnabled: true,
+          footerText: '© 2024 All rights reserved.',
+          footerLinks: []
+        };
+        await saveDataToBackend('site-settings', defaultSettings);
+        setSettings(defaultSettings);
+        toast.success('Settings reset to defaults');
+      } catch (error) {
+        console.error('Error resetting settings:', error);
+        toast.error('Failed to reset settings');
+      }
     }
   };
 
@@ -459,7 +501,7 @@ const Settings = () => {
 
                   <Button 
                     onClick={() => {
-                      localStorage.removeItem('github_sync_config');
+                      // Clear in-memory GitHub config (session-only)
                       setGitHubConfig(null);
                       setAutoSyncEnabled(false);
                       setGitHubToken('');
@@ -890,7 +932,7 @@ const Settings = () => {
 
                   <Button 
                     onClick={() => {
-                      localStorage.removeItem('github_sync_config');
+                      // Clear in-memory GitHub config (session-only)
                       setGitHubConfig(null);
                       setAutoSyncEnabled(false);
                       setGitHubToken('');
@@ -967,8 +1009,8 @@ const Settings = () => {
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Important:</strong> Changes you make are saved to your browser's localStorage. 
-                  To make them visible to all users, you need to export and upload the data files to GitHub.
+                  <strong>Important:</strong> Changes are saved to the backend server and synced in real-time. 
+                  Enable GitHub Auto-Sync to automatically publish changes to GitHub Pages.
                 </AlertDescription>
               </Alert>
               
