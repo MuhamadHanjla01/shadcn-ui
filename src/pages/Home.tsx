@@ -223,7 +223,8 @@ const Home = () => {
     { key: 'twitter', icon: Twitter, href: userData.socialMedia.twitter, label: 'Twitter' },
     { key: 'email', icon: Mail, href: userData.socialMedia.email ? `mailto:${userData.socialMedia.email}` : '', label: 'Email' },
   ].filter((item: any) => {
-    const visible = (socialVisibility as any)[item.key];
+    // Safety check: ensure socialVisibility is defined
+    const visible = socialVisibility ? (socialVisibility as any)[item.key] : true;
     const hasUrl = Boolean(item.href);
     return visible && hasUrl;
   }) : [];
