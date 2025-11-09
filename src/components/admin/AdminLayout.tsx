@@ -38,6 +38,7 @@ import { ContactMessage, SiteSettings } from '@/lib/storage';
 const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { auth, logout } = useAdminAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -46,13 +47,22 @@ const AdminLayout = () => {
   // Load site settings for logo and favicon
   useEffect(() => {
     const loadSettings = async () => {
+      setIsLoading(true);
+      
+      // Safety timeout: Force close loading screen after 3 seconds max
+      const safetyTimeout = setTimeout(() => {
+        console.log('⚠️ Admin loading timeout - forcing close');
+        setIsLoading(false);
+      }, 3000);
+      
       try {
         const settings = await getDataFromBackend('site-settings');
         if (settings) {
-          setSiteSettings(settings as SiteSettings);
+          const typedSettings = settings as SiteSettings;
+          setSiteSettings(typedSettings);
           
           // Update document title for admin panel
-          const siteName = settings.siteName || 'Portfolio';
+          const siteName = typedSettings.siteName || 'Portfolio';
           document.title = `Admin Panel - ${siteName}`;
           
           // Update favicon to match frontend
@@ -95,15 +105,18 @@ const AdminLayout = () => {
           };
           
           // Apply favicon
-          if (settings.logoMode === 'text' && settings.logoText) {
-            const faviconUrl = generateTextFavicon(settings.logoText);
+          if (typedSettings.logoMode === 'text' && typedSettings.logoText) {
+            const faviconUrl = generateTextFavicon(typedSettings.logoText);
             updateFavicon(faviconUrl);
-          } else if (settings.logo) {
-            updateFavicon(settings.logo);
+          } else if (typedSettings.logo) {
+            updateFavicon(typedSettings.logo);
           }
         }
       } catch (error) {
         console.error('Error loading site settings for admin:', error);
+      } finally {
+        clearTimeout(safetyTimeout);
+        setIsLoading(false);
       }
     };
     loadSettings();
@@ -204,27 +217,37 @@ const AdminLayout = () => {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo - Use frontend logo */}
+      {/* Logo - Show skeleton during loading */}
       <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-        <Link to="/admin" className="flex items-center space-x-2">
-          {siteSettings?.logoMode === 'image' && siteSettings?.logo ? (
-            <div className="h-8 w-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
-              <img src={siteSettings.logo} alt="Logo" className="h-full w-full object-cover" />
+        {isLoading ? (
+          <div className="flex items-center space-x-2">
+            <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-700 animate-pulse"></div>
+            <div>
+              <div className="h-5 w-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mb-1"></div>
+              <div className="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
             </div>
-          ) : (
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">
-                {siteSettings?.logoText?.slice(0, 3) || 'AC'}
-              </span>
-            </div>
-          )}
-          <div>
-            <h2 className="font-bold text-lg text-slate-900 dark:text-white">
-              {siteSettings?.siteName || 'Admin Panel'}
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Portfolio CMS</p>
           </div>
-        </Link>
+        ) : (
+          <Link to="/admin" className="flex items-center space-x-2">
+            {siteSettings?.logoMode === 'image' && siteSettings?.logo ? (
+              <div className="h-8 w-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                <img src={siteSettings.logo} alt="Logo" className="h-full w-full object-cover" />
+              </div>
+            ) : (
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center">
+                <span className="text-white font-bold text-sm">
+                  {siteSettings?.logoText?.slice(0, 3) || 'AC'}
+                </span>
+              </div>
+            )}
+            <div>
+              <h2 className="font-bold text-lg text-slate-900 dark:text-white">
+                {siteSettings?.siteName || 'Admin Panel'}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Portfolio CMS</p>
+            </div>
+          </Link>
+        )}
       </div>
 
       {/* Navigation */}
