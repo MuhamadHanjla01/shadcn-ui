@@ -65,6 +65,12 @@ const Home = () => {
       console.log('📥 Loading home data from backend only (no cache)...');
       setIsLoading(true);
       
+      // Safety timeout: Force close loading screen after 3 seconds max
+      const safetyTimeout = setTimeout(() => {
+        console.log('⚠️ Loading timeout - forcing close');
+        setIsLoading(false);
+      }, 3000);
+      
       try {
         // ONLY load from backend API - no fallback to localStorage or JSON
         const [backendUserData, backendStats, backendSettings] = await Promise.all([
@@ -73,17 +79,24 @@ const Home = () => {
           getDataFromBackend('site-settings')
         ]);
         
-        // IMPORTANT: Only update state if backend returns data
+        // IMPORTANT: Set data or use defaults, then close loading
         if (backendUserData) {
           setUserData(backendUserData as typeof initialUserData);
           initializeDataHash('user', backendUserData);
           console.log('✅ Loaded user from backend:', (backendUserData as any).name);
+        } else {
+          // Use fallback if backend returns null
+          setUserData(initialUserData);
+          console.log('⚠️ Using fallback user data');
         }
         
         if (backendStats) {
           setStats(backendStats as typeof initialStats);
           initializeDataHash('stats', backendStats);
           console.log('✅ Loaded stats from backend:', (backendStats as any[]).length);
+        } else {
+          setStats(initialStats);
+          console.log('⚠️ Using fallback stats data');
         }
         
         if (backendSettings) {
@@ -95,12 +108,14 @@ const Home = () => {
         }
         
         console.log('✅ All data loaded from backend at', new Date().toISOString());
-        setIsLoading(false);
       } catch (error) {
         console.error('❌ Error loading data from backend:', error);
-        // On error, use initial defaults as last resort
+        // On error, use initial defaults
         setUserData(initialUserData);
         setStats(initialStats);
+      } finally {
+        // Clear safety timeout and close loading screen
+        clearTimeout(safetyTimeout);
         setIsLoading(false);
       }
     };
@@ -209,7 +224,7 @@ const Home = () => {
   const textAlign = heroLayout === 'left' ? 'text-left' : heroLayout === 'right' ? 'text-right' : 'text-center';
 
   // Show animated skeleton loading until data is loaded
-  if (isLoading || !userData) {
+  if (isLoading) {
     return (
       <div className="relative overflow-hidden">
         {/* Animated Background Elements - Same as actual page */}
