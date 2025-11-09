@@ -228,7 +228,7 @@ const NotificationContent = ({
 }: {
   notification: Notification;
   formatTimeAgo: (timestamp: string) => string;
-  getNotificationIcon: (type: Notification['type']) => JSX.Element;
+  getNotificationIcon: (type: Notification['type']) => React.ReactElement;
 }) => (
   <div className="flex items-start space-x-3 group">
     <div className="flex-shrink-0 mt-1">
