@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ContactMessage } from '@/lib/storage';
 import { getDataFromBackend, getWebSocketUrl } from '@/lib/backend-api';
+import { addNotification } from '@/lib/notification-service';
 
 const Messages = () => {
   const [messages, setMessages] = useState<ContactMessage[]>([]);
@@ -63,7 +64,25 @@ const Messages = () => {
           if (message.type === 'update' && message.dataType === 'messages') {
             console.log('📨 New messages received via WebSocket:', message.data);
             if (message.data && Array.isArray(message.data)) {
-              setMessages(message.data as ContactMessage[]);
+              const newMessages = message.data as ContactMessage[];
+              const oldMessagesCount = messages.length;
+              const newMessagesCount = newMessages.length;
+              
+              // If there are more messages than before, create notification
+              if (newMessagesCount > oldMessagesCount) {
+                const latestMessage = newMessages[0]; // Messages are sorted newest first
+                if (latestMessage && !latestMessage.read) {
+                  addNotification(
+                    'message',
+                    'New Contact Message',
+                    `${latestMessage.name}: ${latestMessage.message.substring(0, 50)}${latestMessage.message.length > 50 ? '...' : ''}`,
+                    '/admin/messages'
+                  );
+                  console.log('🔔 Notification created for new message from:', latestMessage.name);
+                }
+              }
+              
+              setMessages(newMessages);
             }
           }
         } catch (error) {

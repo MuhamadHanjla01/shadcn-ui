@@ -32,15 +32,15 @@ const NotificationDropdown = () => {
   useEffect(() => {
     loadNotifications();
 
-    // Listen for notification updates
+    // Listen for notification updates (triggered by addNotification)
     const handleUpdate = () => {
       loadNotifications();
     };
 
     window.addEventListener('notificationsUpdated', handleUpdate);
     
-    // Refresh every 10 seconds
-    const interval = setInterval(loadNotifications, 10000);
+    // Refresh every 5 seconds to catch any missed updates
+    const interval = setInterval(loadNotifications, 5000);
 
     return () => {
       window.removeEventListener('notificationsUpdated', handleUpdate);

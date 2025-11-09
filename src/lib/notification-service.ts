@@ -1,5 +1,4 @@
 import { Notification } from '@/types/admin';
-import { loadMessages } from './storage';
 import { dashboardService } from './dashboard-service';
 
 const STORAGE_KEY = 'admin_notifications';
@@ -92,68 +91,18 @@ export const getUnreadCount = (): number => {
   return notifications.filter(n => !n.read).length;
 };
 
-// Generate notifications from system events
+// Generate notifications from system events (deprecated - now handled by WebSocket)
 export const generateSystemNotifications = (): void => {
-  const notifications = loadNotifications();
-  const latestNotificationTime = notifications[0]?.timestamp || new Date(0).toISOString();
-  
-  // Check for new unread messages
-  const messages = loadMessages();
-  const newMessages = messages.filter(
-    msg => !msg.read && new Date(msg.date) > new Date(latestNotificationTime)
-  );
-  
-  newMessages.forEach(msg => {
-    addNotification(
-      'message',
-      'New Contact Message',
-      `${msg.name} sent you a message: "${msg.subject}"`,
-      '/admin/messages'
-    );
-  });
+  // This is now handled by real-time WebSocket updates in Messages.tsx
+  // Keeping function for backward compatibility
+  console.log('ℹ️ generateSystemNotifications called - notifications are now handled via WebSocket');
 };
 
-// Auto-generate notifications when data changes
+// Auto-generate notifications when data changes (deprecated - now using WebSocket)
 export const initNotificationListener = (): void => {
-  // Listen for new messages
-  window.addEventListener('portfolioDataUpdated', (event: any) => {
-    const detail = event.detail;
-    
-    if (detail?.key === 'portfolio_messages') {
-      const messages = loadMessages();
-      const unreadMessages = messages.filter(msg => !msg.read);
-      
-      if (unreadMessages.length > 0) {
-        const latest = unreadMessages[0];
-        addNotification(
-          'message',
-          'New Contact Message',
-          `${latest.name}: ${latest.subject}`,
-          '/admin/messages'
-        );
-      }
-    }
-    
-    if (detail?.key === 'portfolio_projects') {
-      const stats = dashboardService.getDashboardStats();
-      addNotification(
-        'update',
-        'Projects Updated',
-        `You now have ${stats.totalProjects} projects in your portfolio`,
-        '/admin/projects'
-      );
-    }
-    
-    if (detail?.key === 'portfolio_blog_posts') {
-      const stats = dashboardService.getDashboardStats();
-      addNotification(
-        'update',
-        'Blog Posts Updated',
-        `You now have ${stats.totalBlogPosts} blog posts`,
-        '/admin/blog'
-      );
-    }
-  });
+  // Notifications are now created in real-time via WebSocket in Messages.tsx
+  // Keeping function for backward compatibility
+  console.log('ℹ️ initNotificationListener called - notifications are now handled via WebSocket');
 };
 
 // Export notification service
