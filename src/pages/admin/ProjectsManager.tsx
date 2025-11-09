@@ -30,44 +30,24 @@ const ProjectsManager = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    // Load data - prioritize backend API, fallback to localStorage/JSON files
+    // Load data ONLY from backend API
     const loadLatestData = async () => {
       try {
         console.log('📥 Loading projects from backend API...');
         
-        // Try to load from backend API first
+        // ONLY load from backend API
         const backendProjects = await getDataFromBackend('projects');
         
-        let freshProjects;
-        
         if (backendProjects) {
-          freshProjects = backendProjects;
-          saveProjects(backendProjects);
-          console.log('✅ Loaded projects from backend API');
+          setProjects(backendProjects as typeof initialProjects);
+          console.log('✅ Loaded projects from backend API:', (backendProjects as any[]).length);
         } else {
-          const projectsKey = 'portfolio_projects';
-          if (isRecentlySaved(projectsKey, 5)) {
-            freshProjects = loadProjects(initialProjects);
-          } else {
-            freshProjects = await loadDataFromFile(
-              DATA_FILES.projects,
-              projectsKey,
-              initialProjects,
-              true
-            );
-          }
+          setProjects(initialProjects);
+          console.log('⚠️ No backend data, using initial defaults');
         }
-        
-        if (freshProjects) setProjects(freshProjects);
       } catch (error) {
-        console.error('Error loading latest data:', error);
-        // Fallback to localStorage on error
-        const stored = localStorage.getItem('portfolio_projects');
-        if (stored) {
-          try {
-            setProjects(JSON.parse(stored));
-          } catch (e) {}
-        }
+        console.error('❌ Error loading data from backend:', error);
+        setProjects(initialProjects);
       }
     };
 

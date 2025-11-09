@@ -18,33 +18,55 @@ const Projects = () => {
 
   useEffect(() => {
     trackPageView('projects');
-    const load = async () => {
-      console.log('📥 Loading projects...');
-      
-      // Try backend API first, fallback to JSON files
-      const backendProjects = await getDataFromBackend('projects');
-      const projects = backendProjects || await loadDataFromFile(
-        DATA_FILES.projects,
-        'portfolio_projects',
-        initialProjects
-      );
-      setProjectList(projects);
-    };
-    load();
-    const onUpdate = () => load();
-    window.addEventListener('portfolioDataUpdated', onUpdate);
     
-    // Poll for project updates every 5 seconds (fast real-time!)
-    const pollInterval = setInterval(async () => {
-      const updated = await checkForUpdates('projects');
-      if (updated) {
-        setProjectList(updated);
+    // Load data ONLY from backend - no localStorage or JSON fallback!
+    const load = async () => {
+      console.log('📥 Loading projects from backend only (no cache)...');
+      
+      try {
+        // ONLY load from backend API
+        const backendProjects = await getDataFromBackend('projects');
+        const projects = (backendProjects as typeof initialProjects) || initialProjects;
+        
+        console.log('✅ Loaded fresh data from backend:', {
+          projects: projects.length,
+          timestamp: new Date().toISOString()
+        });
+        
+        setProjectList(projects);
+      } catch (error) {
+        console.error('❌ Error loading data from backend:', error);
+        setProjectList(initialProjects);
       }
-    }, 5000);
+    };
+    
+    load();
+    
+    // Listen for WebSocket updates from admin panel
+    const handleDataUpdate = async (event?: any) => {
+      console.log('🔄 Data update event received on Projects page:', event?.detail);
+      
+      // If real-time sync update detected, use data from event
+      if (event?.detail?.source === 'realtime-sync') {
+        console.log('📥 Real-time sync update detected');
+        
+        const eventData = event?.detail?.data;
+        if (eventData?.projects) {
+          console.log('✅ Using data from WebSocket event');
+          setProjectList(eventData.projects as typeof initialProjects);
+          return;
+        }
+      }
+      
+      // Otherwise reload data from backend
+      console.log('📥 Reloading data from backend...');
+      load();
+    };
+    
+    window.addEventListener('portfolioDataUpdated', handleDataUpdate);
     
     return () => {
-      window.removeEventListener('portfolioDataUpdated', onUpdate);
-      clearInterval(pollInterval);
+      window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
     };
   }, []);
 

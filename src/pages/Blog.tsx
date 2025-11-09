@@ -19,33 +19,55 @@ const Blog = () => {
 
   useEffect(() => {
     trackPageView('blog');
-    const load = async () => {
-      console.log('📥 Loading blog posts...');
-      
-      // Try backend API first, fallback to JSON files
-      const backendBlogPosts = await getDataFromBackend('blog-posts');
-      const blogPosts = backendBlogPosts || await loadDataFromFile(
-        DATA_FILES.blogPosts,
-        'portfolio_blog_posts',
-        initialBlogPosts
-      );
-      setPosts(blogPosts);
-    };
-    load();
-    const onUpdate = () => load();
-    window.addEventListener('portfolioDataUpdated', onUpdate);
     
-    // Poll for blog post updates every 5 seconds (fast real-time!)
-    const pollInterval = setInterval(async () => {
-      const updated = await checkForUpdates('blogPosts');
-      if (updated) {
-        setPosts(updated);
+    // Load data ONLY from backend - no localStorage or JSON fallback!
+    const load = async () => {
+      console.log('📥 Loading blog posts from backend only (no cache)...');
+      
+      try {
+        // ONLY load from backend API
+        const backendBlogPosts = await getDataFromBackend('blog-posts');
+        const blogPosts = (backendBlogPosts as typeof initialBlogPosts) || initialBlogPosts;
+        
+        console.log('✅ Loaded fresh data from backend:', {
+          posts: blogPosts.length,
+          timestamp: new Date().toISOString()
+        });
+        
+        setPosts(blogPosts);
+      } catch (error) {
+        console.error('❌ Error loading data from backend:', error);
+        setPosts(initialBlogPosts);
       }
-    }, 5000);
+    };
+    
+    load();
+    
+    // Listen for WebSocket updates from admin panel
+    const handleDataUpdate = async (event?: any) => {
+      console.log('🔄 Data update event received on Blog page:', event?.detail);
+      
+      // If real-time sync update detected, use data from event
+      if (event?.detail?.source === 'realtime-sync') {
+        console.log('📥 Real-time sync update detected');
+        
+        const eventData = event?.detail?.data;
+        if (eventData?.blogPosts) {
+          console.log('✅ Using data from WebSocket event');
+          setPosts(eventData.blogPosts as typeof initialBlogPosts);
+          return;
+        }
+      }
+      
+      // Otherwise reload data from backend
+      console.log('📥 Reloading data from backend...');
+      load();
+    };
+    
+    window.addEventListener('portfolioDataUpdated', handleDataUpdate);
     
     return () => {
-      window.removeEventListener('portfolioDataUpdated', onUpdate);
-      clearInterval(pollInterval);
+      window.removeEventListener('portfolioDataUpdated', handleDataUpdate);
     };
   }, []);
 

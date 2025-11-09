@@ -224,7 +224,7 @@ devDependencies:
     specifier: ^0.4.9
     version: 0.4.20(eslint@9.31.0)
   gh-pages:
-    specifier: ^6.1.1
+    specifier: ^6.3.0
     version: 6.3.0
   globals:
     specifier: ^15.9.0

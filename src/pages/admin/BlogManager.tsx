@@ -28,44 +28,24 @@ const BlogManager = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    // Load data - prioritize backend API, fallback to localStorage/JSON files
+    // Load data ONLY from backend API
     const loadLatestData = async () => {
       try {
         console.log('📥 Loading blog posts from backend API...');
         
-        // Try to load from backend API first
+        // ONLY load from backend API
         const backendBlogPosts = await getDataFromBackend('blog-posts');
         
-        let freshBlogPosts;
-        
         if (backendBlogPosts) {
-          freshBlogPosts = backendBlogPosts;
-          saveBlogPosts(backendBlogPosts);
-          console.log('✅ Loaded blog posts from backend API');
+          setBlogPosts(backendBlogPosts as typeof initialBlogPosts);
+          console.log('✅ Loaded blog posts from backend API:', (backendBlogPosts as any[]).length);
         } else {
-          const blogPostsKey = 'portfolio_blog_posts';
-          if (isRecentlySaved(blogPostsKey, 5)) {
-            freshBlogPosts = loadBlogPosts(initialBlogPosts);
-          } else {
-            freshBlogPosts = await loadDataFromFile(
-              DATA_FILES.blogPosts,
-              blogPostsKey,
-              initialBlogPosts,
-              true
-            );
-          }
+          setBlogPosts(initialBlogPosts);
+          console.log('⚠️ No backend data, using initial defaults');
         }
-        
-        if (freshBlogPosts) setBlogPosts(freshBlogPosts);
       } catch (error) {
-        console.error('Error loading latest data:', error);
-        // Fallback to localStorage on error
-        const stored = localStorage.getItem('portfolio_blog_posts');
-        if (stored) {
-          try {
-            setBlogPosts(JSON.parse(stored));
-          } catch (e) {}
-        }
+        console.error('❌ Error loading data from backend:', error);
+        setBlogPosts(initialBlogPosts);
       }
     };
 
