@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { loadSiteSettings, loadUserData } from '@/lib/storage';
-import { loadDataFromFile, DATA_FILES } from '@/lib/data-sync';
+import { SiteSettings } from '@/lib/storage';
+import { getDataFromBackend } from '@/lib/backend-api';
 import { userData as defaultUserData } from '@/lib/data';
 
 const MetadataManager = () => {
   const location = useLocation();
   const [userData, setUserData] = useState(defaultUserData);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
   // Generate favicon from text
   const generateTextFavicon = (text: string): string => {
@@ -31,21 +32,30 @@ const MetadataManager = () => {
     return canvas.toDataURL('image/png');
   };
 
-  // Load user data on mount
+  // Load user data and site settings from backend
   useEffect(() => {
-    const loadUser = async () => {
-      const user = await loadDataFromFile(
-        DATA_FILES.user,
-        'portfolio_user_data',
-        defaultUserData
-      );
-      setUserData(user);
+    const loadData = async () => {
+      try {
+        const [user, settings] = await Promise.all([
+          getDataFromBackend('user'),
+          getDataFromBackend('site-settings')
+        ]);
+        
+        if (user) {
+          setUserData(user as typeof defaultUserData);
+        }
+        if (settings) {
+          setSiteSettings(settings as SiteSettings);
+        }
+      } catch (error) {
+        console.error('Error loading metadata:', error);
+      }
     };
-    loadUser();
+    loadData();
 
-    // Listen for user data updates
+    // Listen for updates
     const handleUpdate = () => {
-      loadUser();
+      loadData();
     };
     window.addEventListener('portfolioDataUpdated', handleUpdate);
     return () => window.removeEventListener('portfolioDataUpdated', handleUpdate);
@@ -53,19 +63,16 @@ const MetadataManager = () => {
 
   // Update metadata function
   const updateMetadata = () => {
-    const settings = loadSiteSettings();
+    if (!siteSettings || !userData) return; // Wait for data to load
     
-    // Get current user data (prefer state, fallback to localStorage)
-    const currentUser = userData || loadUserData(defaultUserData);
-
     // Update favicon using theme logo (image or text mode)
     let faviconUrl = '';
-    if (settings.logoMode === 'text' && settings.logoText) {
+    if (siteSettings.logoMode === 'text' && siteSettings.logoText) {
       // Generate favicon from text
-      faviconUrl = generateTextFavicon(settings.logoText);
-    } else if (settings.logo) {
+      faviconUrl = generateTextFavicon(siteSettings.logoText);
+    } else if (siteSettings.logo) {
       // Use image logo
-      faviconUrl = settings.logo;
+      faviconUrl = siteSettings.logo;
     }
     
     if (faviconUrl) {
@@ -80,16 +87,12 @@ const MetadataManager = () => {
     }
 
     // Build dynamic title from user data or settings
-    const ogTitle = settings.metaTitle || `${currentUser.name} - ${currentUser.title}`;
-    const ogDescription = settings.metaDescription || currentUser.tagline || `${currentUser.name} - ${currentUser.title} Portfolio`;
-    const ogImage = settings.ogImage || currentUser.profileImage || '';
+    const ogTitle = siteSettings.metaTitle || `${userData.name} - ${userData.title}`;
+    const ogDescription = siteSettings.metaDescription || userData.tagline || `${userData.name} - ${userData.title} Portfolio`;
+    const ogImage = siteSettings.ogImage || userData.profileImage || '';
     
     // Update page title
-    if (settings.metaTitle) {
-      document.title = settings.metaTitle;
-    } else {
-      document.title = `${currentUser.name} - ${currentUser.title}`;
-    }
+    document.title = siteSettings.metaTitle || `${userData.name} - ${userData.title}`;
 
     // Update or create meta description
     let metaDescription = document.querySelector('meta[name="description"]') as HTMLMetaElement;
@@ -98,17 +101,17 @@ const MetadataManager = () => {
       metaDescription.name = 'description';
       document.getElementsByTagName('head')[0].appendChild(metaDescription);
     }
-    metaDescription.content = settings.metaDescription || ogDescription;
+    metaDescription.content = siteSettings.metaDescription || ogDescription;
 
     // Update or create meta keywords
-    let metaKeywords = document.querySelector('meta[name="keywords"]') as HTMLMetaElement;
-    if (!metaKeywords) {
-      metaKeywords = document.createElement('meta');
-      metaKeywords.name = 'keywords';
-      document.getElementsByTagName('head')[0].appendChild(metaKeywords);
-    }
-    if (settings.metaKeywords) {
-      metaKeywords.content = settings.metaKeywords;
+    if (siteSettings.metaKeywords) {
+      let metaKeywords = document.querySelector('meta[name="keywords"]') as HTMLMetaElement;
+      if (!metaKeywords) {
+        metaKeywords = document.createElement('meta');
+        metaKeywords.name = 'keywords';
+        document.getElementsByTagName('head')[0].appendChild(metaKeywords);
+      }
+      metaKeywords.content = siteSettings.metaKeywords;
     }
 
     // Open Graph tags - Use user data for dynamic updates
@@ -140,7 +143,7 @@ const MetadataManager = () => {
     }
     
     updateOgTag('og:url', window.location.href);
-    updateOgTag('og:site_name', settings.siteName || currentUser.name || 'Portfolio');
+    updateOgTag('og:site_name', siteSettings.siteName || userData.name || 'Portfolio');
     updateOgTag('og:type', 'website');
 
     // Twitter Card tags - Use user data
@@ -170,30 +173,18 @@ const MetadataManager = () => {
       }
       updateTwitterTag('twitter:image', imageUrl);
     }
-    if (settings.twitterHandle) {
-      updateTwitterTag('twitter:site', settings.twitterHandle);
-      updateTwitterTag('twitter:creator', settings.twitterHandle);
+    if (siteSettings.twitterHandle) {
+      updateTwitterTag('twitter:site', siteSettings.twitterHandle);
+      updateTwitterTag('twitter:creator', siteSettings.twitterHandle);
     }
   };
 
   useEffect(() => {
-    // Update on mount and when location or user data changes
-    updateMetadata();
-
-    // Listen for settings and user data updates
-    const handleUpdate = () => {
-      // Reload user data if updated
-      loadDataFromFile(DATA_FILES.user, 'portfolio_user_data', defaultUserData).then(setUserData);
+    // Update metadata when data is loaded or changes
+    if (userData && siteSettings) {
       updateMetadata();
-    };
-    window.addEventListener('portfolioDataUpdated', handleUpdate);
-    window.addEventListener('storage', handleUpdate);
-
-    return () => {
-      window.removeEventListener('portfolioDataUpdated', handleUpdate);
-      window.removeEventListener('storage', handleUpdate);
-    };
-  }, [location, userData]);
+    }
+  }, [location, userData, siteSettings]);
 
   return null; // This component doesn't render anything
 };
