@@ -11,13 +11,15 @@ import { startRealtimeSync, initializeDataHash } from '@/lib/realtime-sync';
 import { getDataFromBackend } from '@/lib/backend-api';
 
 const Home = () => {
-  const [userData, setUserData] = useState(initialUserData);
-  const [stats, setStats] = useState(initialStats);
+  // Start with null to avoid showing old data, will load from backend
+  const [userData, setUserData] = useState<typeof initialUserData | null>(null);
+  const [stats, setStats] = useState<typeof initialStats | null>(null);
   const [displayText, setDisplayText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
-  const fullText = userData.tagline;
-  const [heroLayout, setHeroLayout] = useState<'left'|'center'|'right'>(loadSiteSettings().heroLayout || 'center');
-  const [socialVisibility, setSocialVisibility] = useState(loadSiteSettings().socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+  const fullText = userData?.tagline || '';
+  const [heroLayout, setHeroLayout] = useState<'left'|'center'|'right'>('center');
+  const [socialVisibility, setSocialVisibility] = useState({ github: true, linkedin: true, twitter: true, email: true });
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleResumeDownload = async (e: any) => {
     if (!userData.resume) {
@@ -61,6 +63,7 @@ const Home = () => {
 
     const loadData = async () => {
       console.log('📥 Loading home data from backend only (no cache)...');
+      setIsLoading(true);
       
       try {
         // ONLY load from backend API - no fallback to localStorage or JSON
@@ -70,32 +73,35 @@ const Home = () => {
           getDataFromBackend('site-settings')
         ]);
         
-        // Use backend data or fallback to initial defaults (NOT localStorage)
-        const userData = (backendUserData as typeof initialUserData) || initialUserData;
-        const stats = (backendStats as typeof initialStats) || initialStats;
-        const ss = (backendSettings as ReturnType<typeof loadSiteSettings>) || loadSiteSettings();
+        // IMPORTANT: Only update state if backend returns data
+        if (backendUserData) {
+          setUserData(backendUserData as typeof initialUserData);
+          initializeDataHash('user', backendUserData);
+          console.log('✅ Loaded user from backend:', (backendUserData as any).name);
+        }
         
-        console.log('✅ Loaded fresh data from backend:', {
-          user: userData.name,
-          stats: stats.length,
-          timestamp: new Date().toISOString()
-        });
+        if (backendStats) {
+          setStats(backendStats as typeof initialStats);
+          initializeDataHash('stats', backendStats);
+          console.log('✅ Loaded stats from backend:', (backendStats as any[]).length);
+        }
         
-        // Update state with backend data
-        setUserData(userData);
-        setStats(stats);
-        setHeroLayout((ss.heroLayout as 'left'|'center'|'right') || 'center');
-        setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+        if (backendSettings) {
+          const ss = backendSettings as ReturnType<typeof loadSiteSettings>;
+          setHeroLayout((ss.heroLayout as 'left'|'center'|'right') || 'center');
+          setSocialVisibility(ss.socialVisibility || { github: true, linkedin: true, twitter: true, email: true });
+          initializeDataHash('siteSettings', ss);
+          console.log('✅ Loaded site settings from backend');
+        }
         
-        // Initialize hashes for change detection
-        initializeDataHash('user', userData);
-        initializeDataHash('stats', stats);
-        initializeDataHash('siteSettings', ss);
+        console.log('✅ All data loaded from backend at', new Date().toISOString());
+        setIsLoading(false);
       } catch (error) {
         console.error('❌ Error loading data from backend:', error);
-        // Use initial defaults if backend fails
+        // On error, use initial defaults as last resort
         setUserData(initialUserData);
         setStats(initialStats);
+        setIsLoading(false);
       }
     };
 
@@ -188,7 +194,7 @@ const Home = () => {
     }
   }, [currentIndex, fullText]);
 
-  const socialLinks = [
+  const socialLinks = userData ? [
     { key: 'github', icon: Github, href: userData.socialMedia.github, label: 'GitHub' },
     { key: 'linkedin', icon: Linkedin, href: userData.socialMedia.linkedin, label: 'LinkedIn' },
     { key: 'twitter', icon: Twitter, href: userData.socialMedia.twitter, label: 'Twitter' },
@@ -197,10 +203,19 @@ const Home = () => {
     const visible = (socialVisibility as any)[item.key];
     const hasUrl = Boolean(item.href);
     return visible && hasUrl;
-  });
+  }) : [];
 
   const sectionJustify = heroLayout === 'left' ? 'justify-start' : heroLayout === 'right' ? 'justify-end' : 'justify-center';
   const textAlign = heroLayout === 'left' ? 'text-left' : heroLayout === 'right' ? 'text-right' : 'text-center';
+
+  // Show loading or nothing until data is loaded
+  if (isLoading || !userData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden">
