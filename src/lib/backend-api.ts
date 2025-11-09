@@ -8,9 +8,9 @@
  */
 
 // Configuration
-const REQUEST_TIMEOUT = 10000; // 10 seconds
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
+const REQUEST_TIMEOUT = 5000; // 5 seconds (reduced from 10)
+const MAX_RETRIES = 1; // 1 retry instead of 3 for faster loading
+const RETRY_DELAY = 500; // 500ms instead of 1000ms
 
 /**
  * Sleep utility for retries
@@ -76,7 +76,10 @@ export async function getDataFromBackend<T>(type: DataType, retryCount: number =
     const timestamp = Date.now();
     const url = `${baseUrl}/api/data/${type}?_t=${timestamp}`;
     
-    console.log(`🔗 Attempting to fetch ${type} from: ${url} (attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
+    // Only log on first attempt to reduce console spam
+    if (retryCount === 0) {
+      console.log(`🔗 Fetching ${type} from backend...`);
+    }
     
     const response = await fetchWithTimeout(url, {
       method: 'GET',
@@ -89,17 +92,14 @@ export async function getDataFromBackend<T>(type: DataType, retryCount: number =
       cache: 'no-store'
     });
 
-    console.log(`📡 Response status for ${type}:`, response.status, response.statusText);
-
     if (!response.ok) {
       if (response.status === 404) {
-        console.log(`📝 ${type} data not found in backend (404), returning null`);
+        if (retryCount === 0) console.log(`⚠️ ${type} not found in backend (404)`);
         return null;
       }
       
       // Retry on 5xx server errors
       if (response.status >= 500 && retryCount < MAX_RETRIES) {
-        console.log(`⚠️ Server error for ${type}, retrying in ${RETRY_DELAY}ms...`);
         await sleep(RETRY_DELAY * (retryCount + 1));
         return getDataFromBackend<T>(type, retryCount + 1);
       }
@@ -110,29 +110,23 @@ export async function getDataFromBackend<T>(type: DataType, retryCount: number =
     }
 
     const result = await response.json();
-    console.log(`📦 Response data for ${type}:`, result.success ? '✅ Success' : '❌ Failed', result);
     
     if (result.success && result.data !== null) {
-      console.log(`✅ Loaded ${type} from backend API (fresh from server)`);
+      if (retryCount === 0) console.log(`✅ Loaded ${type} from backend`);
       return result.data as T;
     }
     
-    console.log(`⚠️ ${type} data is null or result.success is false`);
     return null;
   } catch (error: any) {
     // Retry on network errors
     if (retryCount < MAX_RETRIES && (error.message?.includes('Failed to fetch') || error.message?.includes('timeout') || error instanceof TypeError)) {
-      console.log(`⚠️ Network error for ${type}, retrying in ${RETRY_DELAY}ms...`);
       await sleep(RETRY_DELAY * (retryCount + 1));
       return getDataFromBackend<T>(type, retryCount + 1);
     }
     
-    console.error(`❌ Failed to load ${type} from backend:`, {
-      message: error.message,
-      url: `${getApiBaseUrl()}/api/data/${type}`,
-      error: error.name,
-      retries: retryCount
-    });
+    if (retryCount === 0) {
+      console.error(`❌ Failed to load ${type}:`, error.message);
+    }
     return null;
   }
 }

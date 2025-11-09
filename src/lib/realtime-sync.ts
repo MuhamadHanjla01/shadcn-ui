@@ -88,13 +88,13 @@ function hasDataChanged(key: string, currentData: any, isInitialPoll: boolean = 
 function connectWebSocket(callback: (updates: any) => void): () => void {
   const wsUrl = getWebSocketUrl();
   
-  console.log('🔌 Connecting to WebSocket:', wsUrl);
+  console.log('🔌 Connecting to WebSocket...');
   
   try {
     ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
-      console.log('✅ WebSocket connected - Real-time sync enabled!');
+      console.log('✅ WebSocket connected');
       wsReconnectAttempts = 0;
     };
     
@@ -103,16 +103,14 @@ function connectWebSocket(callback: (updates: any) => void): () => void {
         const message = JSON.parse(event.data);
         
         if (message.type === 'connected') {
-          console.log('🎉 Real-time sync ready:', message.message);
+          // Silent - already logged in onopen
         } else if (message.type === 'update') {
-          console.log('📡 Real-time update received:', message.dataType, '- Timestamp:', message.timestamp);
+          console.log('📡 Update:', message.dataType);
           
-          // IMPORTANT: Clear the hash for this data type to ensure fresh data is detected
-          // This prevents stale/cached data from being used
+          // Clear cache for fresh data
           const dataType = message.dataType;
           lastDataVersions.delete(dataType);
           hasInitialPolled.delete(dataType);
-          console.log('🧼 Cleared cache for:', dataType);
           
           // Map backend data types to frontend
           const updates: any = {};
@@ -127,39 +125,33 @@ function connectWebSocket(callback: (updates: any) => void): () => void {
           else if (dataType === 'achievements') updates.achievements = message.data;
           
           if (Object.keys(updates).length > 0) {
-            console.log('🔄 Applying fresh real-time update:', updates);
             // Update hash with new data
             if (message.data) {
               const newHash = getDataHash(message.data);
               lastDataVersions.set(dataType, newHash);
               hasInitialPolled.set(dataType, true);
-              console.log(`✅ Updated hash for ${dataType}:`, newHash.substring(0, 10) + '...');
             }
             callback(updates);
           }
         }
       } catch (error) {
-        console.error('❌ Error parsing WebSocket message:', error);
+        console.error('❌ WebSocket parse error:', error);
       }
     };
     
     ws.onerror = (error) => {
-      console.error('❌ WebSocket error:', error);
+      console.error('❌ WebSocket error');
     };
     
     ws.onclose = () => {
-      console.log('🔌 WebSocket disconnected');
       ws = null;
       
       // Try to reconnect
       if (wsReconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
         wsReconnectAttempts++;
-        console.log(`🔄 Reconnecting in ${RECONNECT_DELAY}ms (attempt ${wsReconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
         wsReconnectTimer = setTimeout(() => {
           connectWebSocket(callback);
         }, RECONNECT_DELAY);
-      } else {
-        console.log('⚠️ Max reconnect attempts reached. Falling back to polling.');
       }
     };
     
