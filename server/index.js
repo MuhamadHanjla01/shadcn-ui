@@ -691,6 +691,77 @@ app.post('/api/github/commit-files', async (req, res) => {
   }
 });
 
+// Contact form endpoint - save message
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { name, email, message } = req.body;
+    
+    // Validate required fields
+    if (!name || !email || !message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name, email, and message are required'
+      });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email format'
+      });
+    }
+    
+    // Create message object
+    const contactMessage = {
+      id: Date.now().toString(),
+      name: name.trim(),
+      email: email.trim(),
+      subject: 'Contact Form Submission',
+      message: message.trim(),
+      read: false,
+      date: new Date().toISOString()
+    };
+    
+    // Load existing messages
+    const messagesFile = join(DATA_DIR, 'messages.json');
+    let messages = [];
+    
+    try {
+      const data = await fs.readFile(messagesFile, 'utf-8');
+      messages = JSON.parse(data);
+    } catch (error) {
+      // File doesn't exist yet, start with empty array
+      console.log('📝 Creating new messages file');
+    }
+    
+    // Add new message
+    messages.unshift(contactMessage); // Add to beginning
+    
+    // Save messages
+    const tempFile = messagesFile + '.tmp';
+    await fs.writeFile(tempFile, JSON.stringify(messages, null, 2), 'utf-8');
+    await fs.rename(tempFile, messagesFile);
+    
+    console.log(`📧 New contact message from ${name} (${email})`);
+    
+    // Broadcast update to connected admin clients
+    broadcastUpdate('messages', messages);
+    
+    res.json({
+      success: true,
+      message: 'Message sent successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error handling contact form:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send message'
+    });
+  }
+});
+
 // 404 handler
 app.all('*', (req, res) => {
   res.status(404).json({
@@ -701,6 +772,7 @@ app.all('*', (req, res) => {
       health: 'GET /api/health',
       data: 'GET/POST /api/data/:type',
       saveAll: 'POST /api/data/save-all',
+      contact: 'POST /api/contact',
       githubTest: 'POST /api/github/test',
       githubCommitFile: 'POST /api/github/commit-file',
       githubCommitFiles: 'POST /api/github/commit-files'

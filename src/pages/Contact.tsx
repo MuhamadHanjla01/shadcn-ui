@@ -7,8 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Mail, Phone, MapPin, Send, CheckCircle, AlertCircle, Github, Linkedin, Twitter } from 'lucide-react';
 import { userData as initialUserData } from '@/lib/data';
-import { addMessage, trackPageView, loadSiteSettings, loadUserData } from '@/lib/storage';
-import { notificationService } from '@/lib/notification-service';
+import { trackPageView } from '@/lib/storage';
+import { getDataFromBackend } from '@/lib/backend-api';
+import { startRealtimeSync } from '@/lib/realtime-sync';
 import type { ContactForm } from '@/types';
 
 const Contact = () => {
@@ -20,24 +21,52 @@ const Contact = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errors, setErrors] = useState<Partial<ContactForm>>({});
-  const [siteSettings, setSiteSettings] = useState(loadSiteSettings());
-  const [userData, setUserData] = useState(initialUserData);
+  const [siteSettings, setSiteSettings] = useState<any>({});
+  const [userData, setUserData] = useState<typeof initialUserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load contact data and track page view
+  // Load contact data from backend
   useEffect(() => {
     trackPageView('contact');
     
-    const loadData = () => {
-      setSiteSettings(loadSiteSettings());
-      setUserData(loadUserData(initialUserData));
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [backendSettings, backendUser] = await Promise.all([
+          getDataFromBackend('site-settings'),
+          getDataFromBackend('user')
+        ]);
+        
+        if (backendSettings) {
+          setSiteSettings(backendSettings);
+        }
+        
+        if (backendUser) {
+          setUserData(backendUser as typeof initialUserData);
+        } else {
+          setUserData(initialUserData);
+        }
+      } catch (error) {
+        console.error('Error loading contact data:', error);
+        setUserData(initialUserData);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     loadData();
     
-    // Listen for updates from admin panel
-    const handleUpdate = () => loadData();
-    window.addEventListener('portfolioDataUpdated', handleUpdate);
-    return () => window.removeEventListener('portfolioDataUpdated', handleUpdate);
+    // Listen for WebSocket updates
+    const cleanup = startRealtimeSync((updates) => {
+      if (updates.siteSettings) {
+        setSiteSettings(updates.siteSettings);
+      }
+      if (updates.user) {
+        setUserData(updates.user);
+      }
+    });
+    
+    return cleanup;
   }, []);
 
   const validateForm = (): boolean => {
@@ -74,31 +103,38 @@ const Contact = () => {
     setSubmitStatus('idle');
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Get backend URL
+      const getApiBaseUrl = () => {
+        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+          return 'http://localhost:3001';
+        }
+        return 'https://shadcn-ui-production-8f2d.up.railway.app';
+      };
       
-      // Save message to localStorage for admin dashboard
-      addMessage({
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-        subject: 'Contact Form Submission',
-        message: formData.message.trim()
+      const response = await fetch(`${getApiBaseUrl()}/api/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          message: formData.message.trim()
+        })
       });
       
-      // Create notification for admin
-      notificationService.addNotification(
-        'message',
-        'New Contact Message',
-        `${formData.name} sent you a message`,
-        '/admin/messages'
-      );
+      const result = await response.json();
       
-      console.log('Contact form submitted:', formData);
-      
-      setSubmitStatus('success');
-      setFormData({ name: '', email: '', message: '' });
+      if (result.success) {
+        console.log('✅ Contact form submitted successfully');
+        setSubmitStatus('success');
+        setFormData({ name: '', email: '', message: '' });
+      } else {
+        console.error('❌ Contact form submission failed:', result.error);
+        setSubmitStatus('error');
+      }
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error('❌ Error submitting form:', error);
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);
@@ -114,19 +150,19 @@ const Contact = () => {
 
   // Build contact info from site settings (filter out empty values)
   const contactInfo = [
-    siteSettings.contactEmail && {
+    siteSettings?.contactEmail && {
       icon: Mail,
       label: 'Email',
       value: siteSettings.contactEmail,
       href: `mailto:${siteSettings.contactEmail}`
     },
-    siteSettings.contactPhone && {
+    siteSettings?.contactPhone && {
       icon: Phone,
       label: 'Phone',
       value: siteSettings.contactPhone,
       href: `tel:${siteSettings.contactPhone.replace(/\D/g, '')}`
     },
-    siteSettings.contactAddress && {
+    siteSettings?.contactAddress && {
       icon: MapPin,
       label: 'Location',
       value: siteSettings.contactAddress,
@@ -134,11 +170,25 @@ const Contact = () => {
     }
   ].filter(Boolean); // Remove null/undefined entries
 
-  const socialLinks = [
+  const socialLinks = userData ? [
     { icon: Github, href: userData.socialMedia.github, label: 'GitHub' },
     { icon: Linkedin, href: userData.socialMedia.linkedin, label: 'LinkedIn' },
     { icon: Twitter, href: userData.socialMedia.twitter, label: 'Twitter' },
-  ];
+  ] : [];
+
+  // Show loading skeleton
+  if (isLoading || !userData) {
+    return (
+      <div className="min-h-screen py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto space-y-20">
+          <section className="text-center space-y-8">
+            <div className="h-16 w-2/3 mx-auto bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+            <div className="h-6 w-3/4 mx-auto bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-20 px-4 sm:px-6 lg:px-8">
