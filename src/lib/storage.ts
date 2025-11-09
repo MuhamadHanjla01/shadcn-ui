@@ -1,6 +1,7 @@
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
+import { getDataFromBackend } from './backend-api';
 
-// Local storage utility for persisting admin changes
+// Legacy storage keys - kept for reference only (NOT USED)
 const STORAGE_KEYS = {
   USER_DATA: 'portfolio_user_data',
   SKILLS: 'portfolio_skills',
@@ -15,102 +16,92 @@ const STORAGE_KEYS = {
   STATS: 'portfolio_stats'
 } as const;
 
-// Generic storage functions
+// DEPRECATED: All save/load functions now use backend API only
+// These are kept for backward compatibility but do nothing
 export const saveToStorage = <T>(key: string, data: T): void => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-    // Store timestamp to track when data was last saved locally
-    localStorage.setItem(`${key}_last_saved`, Date.now().toString());
-    // Dispatch event for real-time updates
-    window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { detail: { key, data } }));
-  } catch (error) {
-    console.error('Error saving to storage:', error);
-  }
+  console.warn('saveToStorage is deprecated - all data now saved to backend');
+  // Dispatch event for real-time updates
+  window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { detail: { key, data } }));
 };
 
-// Check if localStorage data was recently saved (within 5 minutes)
 export const isRecentlySaved = (key: string, maxAgeMinutes: number = 5): boolean => {
-  try {
-    const lastSaved = localStorage.getItem(`${key}_last_saved`);
-    if (!lastSaved) return false;
-    const age = Date.now() - parseInt(lastSaved, 10);
-    return age < maxAgeMinutes * 60 * 1000; // 5 minutes in milliseconds
-  } catch {
-    return false;
-  }
+  // Always return false - no localStorage
+  return false;
 };
 
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
-  try {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : defaultValue;
-  } catch (error) {
-    console.error('Error loading from storage:', error);
-    return defaultValue;
-  }
+  console.warn('loadFromStorage is deprecated - use backend API instead');
+  return defaultValue;
 };
 
-// User Data
+// User Data - DEPRECATED (use backend-api.ts instead)
 export const saveUserData = (data: User) => {
-  saveToStorage(STORAGE_KEYS.USER_DATA, data);
+  console.warn('saveUserData is deprecated - use saveDataToBackend instead');
 };
 
 export const loadUserData = (defaultData: User) => {
-  return loadFromStorage(STORAGE_KEYS.USER_DATA, defaultData);
+  console.warn('loadUserData is deprecated - use getDataFromBackend instead');
+  return defaultData;
 };
 
-// Skills
+// Skills - DEPRECATED
 export const saveSkills = (data: Skill[]) => {
-  saveToStorage(STORAGE_KEYS.SKILLS, data);
+  console.warn('saveSkills is deprecated');
 };
 
 export const loadSkills = (defaultData: Skill[]) => {
-  return loadFromStorage(STORAGE_KEYS.SKILLS, defaultData);
+  console.warn('loadSkills is deprecated');
+  return defaultData;
 };
 
-// Experiences
+// Experiences - DEPRECATED
 export const saveExperiences = (data: Experience[]) => {
-  saveToStorage(STORAGE_KEYS.EXPERIENCES, data);
+  console.warn('saveExperiences is deprecated');
 };
 
 export const loadExperiences = (defaultData: Experience[]) => {
-  return loadFromStorage(STORAGE_KEYS.EXPERIENCES, defaultData);
+  console.warn('loadExperiences is deprecated');
+  return defaultData;
 };
 
-// Achievements
+// Achievements - DEPRECATED
 export const saveAchievements = (data: Achievement[]) => {
-  saveToStorage(STORAGE_KEYS.ACHIEVEMENTS, data);
+  console.warn('saveAchievements is deprecated');
 };
 
 export const loadAchievements = (defaultData: Achievement[]) => {
-  return loadFromStorage(STORAGE_KEYS.ACHIEVEMENTS, defaultData);
+  console.warn('loadAchievements is deprecated');
+  return defaultData;
 };
 
-// Projects
+// Projects - DEPRECATED
 export const saveProjects = (data: Project[]) => {
-  saveToStorage(STORAGE_KEYS.PROJECTS, data);
+  console.warn('saveProjects is deprecated');
 };
 
 export const loadProjects = (defaultData: Project[]) => {
-  return loadFromStorage(STORAGE_KEYS.PROJECTS, defaultData);
+  console.warn('loadProjects is deprecated');
+  return defaultData;
 };
 
-// Blog Posts
+// Blog Posts - DEPRECATED
 export const saveBlogPosts = (data: BlogPost[]) => {
-  saveToStorage(STORAGE_KEYS.BLOG_POSTS, data);
+  console.warn('saveBlogPosts is deprecated');
 };
 
 export const loadBlogPosts = (defaultData: BlogPost[]) => {
-  return loadFromStorage(STORAGE_KEYS.BLOG_POSTS, defaultData);
+  console.warn('loadBlogPosts is deprecated');
+  return defaultData;
 };
 
-// Stats
+// Stats - DEPRECATED
 export const saveStats = (data: Stat[]) => {
-  saveToStorage(STORAGE_KEYS.STATS, data);
+  console.warn('saveStats is deprecated');
 };
 
 export const loadStats = (defaultData: Stat[]) => {
-  return loadFromStorage(STORAGE_KEYS.STATS, defaultData);
+  console.warn('loadStats is deprecated');
+  return defaultData;
 };
 
 // Messages/Contact Forms
@@ -124,25 +115,24 @@ export interface ContactMessage {
   read: boolean;
 }
 
+// Messages - DEPRECATED (messages now handled by backend)
 export const saveMessages = (data: ContactMessage[]) => {
-  saveToStorage(STORAGE_KEYS.MESSAGES, data);
+  console.warn('saveMessages is deprecated');
 };
 
 export const loadMessages = (): ContactMessage[] => {
-  return loadFromStorage(STORAGE_KEYS.MESSAGES, []);
+  console.warn('loadMessages is deprecated - messages are on backend');
+  return [];
 };
 
 export const addMessage = (message: Omit<ContactMessage, 'id' | 'date' | 'read'>) => {
-  const messages = loadMessages();
-  const newMessage: ContactMessage = {
+  console.warn('addMessage is deprecated - use POST /api/contact instead');
+  return {
     ...message,
     id: Date.now().toString(),
     date: new Date().toISOString(),
     read: false
   };
-  messages.unshift(newMessage);
-  saveMessages(messages);
-  return newMessage;
 };
 
 // Theme Settings
@@ -153,13 +143,14 @@ export interface ThemeSettings {
   darkMode: boolean;
 }
 
+// Theme Settings - DEPRECATED
 export const saveThemeSettings = (data: ThemeSettings) => {
-  saveToStorage(STORAGE_KEYS.THEME_SETTINGS, data);
+  console.warn('saveThemeSettings is deprecated');
 };
 
 /**
- * Loads theme settings from public/theme.json (for GitHub Pages) or localStorage (for admin preview)
- * This allows the theme to be shared across all users on GitHub Pages
+ * Loads theme settings - returns defaults only
+ * Theme functionality removed
  */
 export const loadThemeSettings = async (): Promise<ThemeSettings> => {
   const defaultSettings: ThemeSettings = {
@@ -168,46 +159,19 @@ export const loadThemeSettings = async (): Promise<ThemeSettings> => {
     fontFamily: 'system-ui',
     darkMode: false
   };
-
-  try {
-    // Try to load from public/theme.json first (for GitHub Pages deployment)
-    // Use base path for GitHub Pages subdirectory
-    const BASE_PATH = import.meta.env.BASE_URL || '/shadcn-ui/';
-    const themePath = `${BASE_PATH.replace(/\/$/, '')}/theme.json`;
-    const response = await fetch(themePath, { 
-      cache: 'no-store'
-    });
-    if (response.ok) {
-      const publicTheme = await response.json();
-      // Validate and merge with defaults
-      return {
-        primaryColor: publicTheme.primaryColor || defaultSettings.primaryColor,
-        secondaryColor: publicTheme.secondaryColor || defaultSettings.secondaryColor,
-        fontFamily: publicTheme.fontFamily || defaultSettings.fontFamily,
-        darkMode: publicTheme.darkMode ?? defaultSettings.darkMode
-      };
-    }
-    // 404 is expected if theme.json doesn't exist - silently fall through to localStorage
-  } catch (error) {
-    // If theme.json doesn't exist or fetch fails, fall back to localStorage
-    // Silently handle - 404 errors are expected if theme.json doesn't exist
-  }
-
-  // Fall back to localStorage (for admin preview/development)
-  return loadFromStorage(STORAGE_KEYS.THEME_SETTINGS, defaultSettings);
+  return defaultSettings;
 };
 
 /**
- * Synchronous version for use in components that need immediate access
- * Will use localStorage as fallback until async load completes
+ * Synchronous version - returns defaults only
  */
 export const loadThemeSettingsSync = (): ThemeSettings => {
-  return loadFromStorage(STORAGE_KEYS.THEME_SETTINGS, {
+  return {
     primaryColor: '#2563eb',
     secondaryColor: '#4f46e5',
     fontFamily: 'system-ui',
     darkMode: false
-  });
+  };
 };
 
 /**
@@ -236,26 +200,24 @@ export interface AnalyticsData {
   lastUpdated: string;
 }
 
+// Analytics - DEPRECATED (not implemented on backend)
 export const saveAnalytics = (data: AnalyticsData) => {
-  saveToStorage(STORAGE_KEYS.ANALYTICS, data);
+  console.warn('saveAnalytics is deprecated');
 };
 
 export const loadAnalytics = (): AnalyticsData => {
-  return loadFromStorage(STORAGE_KEYS.ANALYTICS, {
+  return {
     pageViews: { home: 0, about: 0, projects: 0, blog: 0, contact: 0 },
     projectViews: {},
     blogViews: {},
     totalVisits: 0,
     lastUpdated: new Date().toISOString()
-  });
+  };
 };
 
 export const trackPageView = (page: string) => {
-  const analytics = loadAnalytics();
-  analytics.pageViews[page] = (analytics.pageViews[page] || 0) + 1;
-  analytics.totalVisits += 1;
-  analytics.lastUpdated = new Date().toISOString();
-  saveAnalytics(analytics);
+  // Analytics tracking disabled (was localStorage-based)
+  console.log(`Page view: ${page}`);
 };
 
 // Site Settings
@@ -289,14 +251,14 @@ export interface SiteSettings {
   twitterHandle?: string; // Twitter handle for cards
 }
 
+// Site Settings - DEPRECATED
 export const saveSiteSettings = (data: SiteSettings) => {
-  saveToStorage(STORAGE_KEYS.SITE_SETTINGS, data);
-  // Dispatch event for real-time updates
-  window.dispatchEvent(new CustomEvent('portfolioDataUpdated', { detail: { key: STORAGE_KEYS.SITE_SETTINGS, data } }));
+  console.warn('saveSiteSettings is deprecated');
 };
 
 export const loadSiteSettings = (): SiteSettings => {
-  return loadFromStorage(STORAGE_KEYS.SITE_SETTINGS, {
+  console.warn('loadSiteSettings is deprecated - use backend API');
+  return {
     siteName: 'Portfolio',
     siteDescription: 'Personal portfolio website',
     seoKeywords: ['portfolio', 'developer', 'web development'],
@@ -318,7 +280,7 @@ export const loadSiteSettings = (): SiteSettings => {
       { label: 'Privacy Policy', url: '/privacy' },
       { label: 'Terms of Service', url: '/terms' }
     ],
-    footerEnabled: true, // Footer enabled by default
+    footerEnabled: true,
     contactEmail: 'contact@example.com',
     contactPhone: '',
     contactAddress: '',
@@ -327,13 +289,11 @@ export const loadSiteSettings = (): SiteSettings => {
     metaKeywords: 'portfolio, web developer, full stack, react, typescript',
     ogImage: '',
     twitterHandle: ''
-  });
+  };
 };
 
-// Clear all stored data
+// Clear all stored data - DEPRECATED
 export const clearAllStorage = () => {
-  Object.values(STORAGE_KEYS).forEach(key => {
-    localStorage.removeItem(key);
-  });
+  console.warn('clearAllStorage is deprecated - no localStorage used');
   window.dispatchEvent(new CustomEvent('portfolioDataUpdated'));
 };

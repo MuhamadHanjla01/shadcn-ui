@@ -1,32 +1,23 @@
 import { Notification } from '@/types/admin';
 import { dashboardService } from './dashboard-service';
 
-const STORAGE_KEY = 'admin_notifications';
+// In-memory storage for notifications (session-only)
+let notificationsCache: Notification[] = [];
 
 /**
- * Notification Service
- * Manages admin panel notifications
+ * Notification Service - Session-based (no localStorage)
+ * Notifications are stored in memory and reset on page refresh
  */
 
-// Load notifications from localStorage
+// Load notifications from memory
 export const loadNotifications = (): Notification[] => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    console.error('Error loading notifications:', error);
-    return [];
-  }
+  return notificationsCache;
 };
 
-// Save notifications to localStorage
+// Save notifications to memory
 export const saveNotifications = (notifications: Notification[]): void => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
-    window.dispatchEvent(new CustomEvent('notificationsUpdated'));
-  } catch (error) {
-    console.error('Error saving notifications:', error);
-  }
+  notificationsCache = notifications;
+  window.dispatchEvent(new CustomEvent('notificationsUpdated'));
 };
 
 // Add a new notification

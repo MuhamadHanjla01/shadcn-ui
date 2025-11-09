@@ -1,29 +1,22 @@
 /**
- * Data Sync Service
+ * Data Sync Service - DEPRECATED
  * 
- * This service handles syncing portfolio data between:
- * 1. Admin panel (localStorage) - for editing
- * 2. Shared JSON files (public/data/*.json) - for public access
- * 
- * When admin makes changes, they can export to JSON files.
- * When users visit the site, data loads from JSON files first,
- * then falls back to localStorage if files don't exist.
+ * All data now comes from backend API only.
+ * JSON file loading is no longer used.
  */
 
 import { User, Skill, Experience, Achievement, Project, BlogPost, Stat } from '@/types';
 import { SiteSettings } from './storage';
 
-// Use base path from vite config (for GitHub Pages subdirectory)
+// DEPRECATED - kept for backward compatibility
 const BASE_PATH = import.meta.env.BASE_URL || '/shadcn-ui/';
 const DATA_BASE_PATH = `${BASE_PATH.replace(/\/$/, '')}/data`;
 
-// Get data file path with dynamic cache busting (called each time)
 const getDataFilePath = (filename: string): string => {
   const timestamp = Date.now();
   return `${DATA_BASE_PATH}/${filename}?t=${timestamp}`;
 };
 
-// Data file paths - functions that return paths with fresh cache busting
 export const DATA_FILES = {
   get user() { return getDataFilePath('user.json'); },
   get skills() { return getDataFilePath('skills.json'); },
@@ -36,7 +29,7 @@ export const DATA_FILES = {
 } as const;
 
 /**
- * Loads data from shared JSON file, falls back to localStorage if file doesn't exist
+ * DEPRECATED - Use getDataFromBackend() instead
  */
 export async function loadDataFromFile<T>(
   filePath: string,
@@ -44,90 +37,7 @@ export async function loadDataFromFile<T>(
   defaultValue: T,
   forceRefresh: boolean = false
 ): Promise<T> {
-  try {
-    // Try to fetch from JSON file first (for public users)
-    // Use timestamp-based cache busting with additional force parameter if needed
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(7); // Extra cache busting
-    let urlWithCache = filePath.includes('?') 
-      ? `${filePath}&t=${timestamp}&r=${random}` 
-      : `${filePath}?t=${timestamp}&r=${random}`;
-    
-    // If force refresh is requested, add force parameter
-    if (forceRefresh || filePath.includes('force=')) {
-      urlWithCache = `${urlWithCache}&_=${Date.now()}`;
-    }
-    
-    const response = await fetch(urlWithCache, {
-      method: 'GET',
-      cache: forceRefresh ? 'reload' : 'no-store', // Force reload if needed
-      headers: {
-        'Cache-Control': forceRefresh ? 'no-cache, no-store, must-revalidate, max-age=0, must-revalidate' : 'no-cache, no-store, must-revalidate, max-age=0',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-        ...(forceRefresh && { 'X-Force-Refresh': 'true' })
-      }
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      // Always return the fetched JSON data (for comparison in real-time sync)
-      // Only update localStorage if data wasn't recently saved locally
-      // This prevents overwriting fresh admin edits with potentially stale JSON data
-      if (typeof window !== 'undefined') {
-        // Check if this data was recently saved (within 5 minutes)
-        const { isRecentlySaved } = await import('./storage');
-        const recentlySaved = isRecentlySaved(localStorageKey, 5);
-        
-        if (!recentlySaved) {
-          // Safe to update localStorage with JSON data
-          localStorage.setItem(localStorageKey, JSON.stringify(data));
-          console.log(`✅ Loaded ${filePath} from shared JSON file and updated localStorage`, {
-            timestamp: new Date().toISOString(),
-            forceRefresh: forceRefresh,
-            dataPreview: typeof data === 'object' ? Object.keys(data).slice(0, 5) : 'N/A'
-          });
-        } else {
-          // Data was recently saved - keep localStorage but still return JSON data for comparison
-          // This allows real-time sync to detect changes even if localStorage has recent saves
-          console.log(`📝 Loaded ${filePath} from JSON (keeping localStorage - has recent saves)`, {
-            timestamp: new Date().toISOString(),
-            forceRefresh: forceRefresh
-          });
-          // Don't overwrite localStorage, but return JSON data so real-time sync can compare
-        }
-      }
-      console.log(`✅ Loaded ${filePath} from shared JSON file`, {
-        timestamp: new Date().toISOString(),
-        forceRefresh: forceRefresh,
-        dataPreview: typeof data === 'object' ? Object.keys(data).slice(0, 5) : 'N/A'
-      });
-      return data;
-    } else if (response.status === 404) {
-      console.log(`📝 ${filePath} not found (404) - JSON files not created yet. Using localStorage fallback.`);
-      console.log(`💡 Tip: Enable GitHub Auto-Sync in Settings to auto-publish changes!`);
-    } else {
-      console.log(`⚠️ ${filePath} returned ${response.status}, using localStorage fallback`);
-    }
-  } catch (error: any) {
-    // File doesn't exist or network error - fall back to localStorage
-    if (error.name !== 'TypeError') { // Ignore CORS/network errors in console spam
-      console.log(`⚠️ Failed to load ${filePath}, using localStorage fallback:`, error.message);
-    }
-  }
-
-  // Fallback to localStorage (for admin preview or when files don't exist)
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem(localStorageKey);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        console.error('Error parsing localStorage data:', e);
-      }
-    }
-  }
-
+  console.warn('loadDataFromFile is deprecated - use getDataFromBackend() instead');
   return defaultValue;
 }
 

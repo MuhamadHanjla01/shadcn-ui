@@ -21,7 +21,8 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
+    // Use sessionStorage for theme preference (not localStorage)
+    const savedTheme = sessionStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     setIsDark(savedTheme === 'dark' || (!savedTheme && prefersDark));
   }, []);
@@ -123,7 +124,8 @@ const Layout = ({ children }: LayoutProps) => {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    // Use sessionStorage instead of localStorage
+    sessionStorage.setItem('theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
   const navigation = [

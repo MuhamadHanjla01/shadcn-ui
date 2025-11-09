@@ -55,34 +55,39 @@
         const userDataUrl = basePath + '/data/user.json?v=' + Date.now();
         const siteSettingsUrl = basePath + '/data/site-settings.json?v=' + Date.now();
         
-        // Use synchronous approach: try fetch, but don't block - update immediately with localStorage if fetch fails
-        // Load from localStorage first (immediate)
-        const settings = localStorage.getItem('portfolio_site_settings');
-        const parsedSettings = settings ? JSON.parse(settings) : {};
+        // Fetch from backend API instead of localStorage
+        const backendUrl = window.location.hostname === 'localhost' 
+          ? 'http://localhost:3001' 
+          : 'https://shadcn-ui-production-8f2d.up.railway.app';
         
-        const userData = localStorage.getItem('portfolio_user_data');
-        let parsedUser = userData ? JSON.parse(userData) : null;
+        // Try to fetch fresh data from backend API
+        let parsedUser = null;
+        let parsedSettings = {};
         
-        // Try to fetch fresh data from JSON files (async, but we'll update when it arrives)
+        // Try to fetch fresh data from backend API (async)
         Promise.all([
-          fetch(userDataUrl, { cache: 'no-store' }).catch(() => null),
-          fetch(siteSettingsUrl, { cache: 'no-store' }).catch(() => null)
+          fetch(backendUrl + '/api/data/user', { cache: 'no-store' }).catch(() => null),
+          fetch(backendUrl + '/api/data/site-settings', { cache: 'no-store' }).catch(() => null)
         ]).then(([userResponse, settingsResponse]) => {
           if (userResponse && userResponse.ok) {
-            userResponse.json().then(data => {
-              parsedUser = data;
-              updateOGTags(parsedUser, parsedSettings);
+            userResponse.json().then(result => {
+              if (result.success && result.data) {
+                parsedUser = result.data;
+                updateOGTags(parsedUser, parsedSettings);
+              }
             }).catch(() => {});
           }
           if (settingsResponse && settingsResponse.ok) {
-            settingsResponse.json().then(data => {
-              Object.assign(parsedSettings, data);
-              updateOGTags(parsedUser, parsedSettings);
+            settingsResponse.json().then(result => {
+              if (result.success && result.data) {
+                parsedSettings = result.data;
+                updateOGTags(parsedUser, parsedSettings);
+              }
             }).catch(() => {});
           }
         }).catch(() => {});
         
-        // Update OG tags function
+        // Update immediately with backend data when available
         function updateOGTags(parsedUser, parsedSettings) {
         
           // Build dynamic meta data
@@ -140,8 +145,7 @@
           }
         }
         
-        // Update immediately with localStorage data
-        updateOGTags(parsedUser, parsedSettings);
+        // No longer update immediately - wait for backend data
         
         // Update title and other settings if available
         if (parsedSettings && parsedSettings.metaTitle) {

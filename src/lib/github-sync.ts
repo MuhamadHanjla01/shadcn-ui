@@ -54,33 +54,30 @@ function decryptToken(encrypted: string): string {
   }
 }
 
+// In-memory storage for GitHub config (session-only)
+let githubConfigCache: GitHubConfig | null = null;
+
 /**
- * Stores GitHub configuration securely
+ * Stores GitHub configuration in memory (not persisted)
  */
 export function saveGitHubConfig(config: GitHubConfig): void {
-  const configToSave = {
+  githubConfigCache = {
     ...config,
     token: encryptToken(config.token)
   };
-  localStorage.setItem('github_sync_config', JSON.stringify(configToSave));
+  console.log('GitHub config saved to session memory');
 }
 
 /**
- * Loads GitHub configuration
+ * Loads GitHub configuration from memory
  */
 export function loadGitHubConfig(): GitHubConfig | null {
-  try {
-    const stored = localStorage.getItem('github_sync_config');
-    if (!stored) return null;
-    
-    const config = JSON.parse(stored);
-    return {
-      ...config,
-      token: decryptToken(config.token)
-    };
-  } catch {
-    return null;
-  }
+  if (!githubConfigCache) return null;
+  
+  return {
+    ...githubConfigCache,
+    token: decryptToken(githubConfigCache.token)
+  };
 }
 
 /**
