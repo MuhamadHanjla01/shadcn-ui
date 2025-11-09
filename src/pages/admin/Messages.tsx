@@ -12,8 +12,7 @@ import {
   User
 } from 'lucide-react';
 import { ContactMessage } from '@/lib/storage';
-import { getDataFromBackend } from '@/lib/backend-api';
-import { startRealtimeSync } from '@/lib/realtime-sync';
+import { getDataFromBackend, getWebSocketUrl } from '@/lib/backend-api';
 
 const Messages = () => {
   const [messages, setMessages] = useState<ContactMessage[]>([]);
@@ -44,15 +43,50 @@ const Messages = () => {
 
     loadData();
 
-    // Listen for real-time updates
-    const cleanup = startRealtimeSync((updates) => {
-      if (updates.messages) {
-        console.log('📨 New messages received via WebSocket');
-        setMessages(updates.messages as ContactMessage[]);
-      }
-    });
+    // Connect to WebSocket directly for admin panel
+    const wsUrl = getWebSocketUrl();
+    console.log('🔌 Admin Messages: Connecting to WebSocket...', wsUrl);
+    
+    let ws: WebSocket | null = null;
+    
+    try {
+      ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('✅ Admin Messages: WebSocket connected');
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          
+          if (message.type === 'update' && message.dataType === 'messages') {
+            console.log('📨 New messages received via WebSocket:', message.data);
+            if (message.data && Array.isArray(message.data)) {
+              setMessages(message.data as ContactMessage[]);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error parsing WebSocket message:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('❌ WebSocket error:', error);
+      };
+      
+      ws.onclose = () => {
+        console.log('🔌 WebSocket disconnected');
+      };
+    } catch (error) {
+      console.error('❌ Failed to create WebSocket:', error);
+    }
 
-    return cleanup;
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
   }, []);
 
   const filteredMessages = messages.filter(msg =>
