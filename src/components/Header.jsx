@@ -9,8 +9,8 @@ export default function Header() {
   return (
     <header className="glass sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold">O</div>
+        <Link href="/" className="flex items-center gap-3">
+          <img src="/logo.png" alt="Platform Logo" className="w-10 h-10 object-contain" />
           <span className="font-bold text-2xl tracking-tight text-white">PlatformX</span>
         </Link>
         <nav className="hidden md:flex gap-8 text-sm font-medium text-slate-300">
