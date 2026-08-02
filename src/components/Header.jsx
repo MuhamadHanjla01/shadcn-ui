@@ -1,43 +1,34 @@
 'use client';
 
 import Link from 'next/link';
-import { useAuth } from '@/lib/auth';
 
 export default function Header() {
-  const { user, logout, loading } = useAuth();
-
   return (
-    <header className="glass sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3">
-          <img src="/logo.png" alt="Platform Logo" className="w-10 h-10 object-contain" />
-          <span className="font-bold text-2xl tracking-tight text-white">PlatformX</span>
-        </Link>
+    <header className="absolute top-0 w-full z-50 bg-transparent border-b border-slate-800/50">
+      <div className="max-w-[1400px] mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-2">
+            <img src="/logo.png" alt="Oxaam Logo" className="h-8 object-contain" />
+            <span className="font-bold text-2xl tracking-tight text-white">PlatformX</span>
+          </Link>
+          <span className="hidden lg:inline text-xs font-medium text-slate-400 pl-4 border-l border-slate-700">
+            World-Leading Free Digital Marketplace
+          </span>
+        </div>
+        
         <nav className="hidden md:flex gap-8 text-sm font-medium text-slate-300">
-          <Link href="/" className="hover:text-white transition">Home</Link>
-          <Link href="/pricing" className="hover:text-white transition">Pricing</Link>
-          <Link href="/dashboard" className="hover:text-white transition">Dashboard</Link>
-          <Link href="/admin" className="hover:text-white transition">Admin</Link>
+          <Link href="#how-it-works" className="hover:text-white transition">How it works</Link>
+          <Link href="#why-free" className="hover:text-white transition">Why free?</Link>
+          <Link href="#stories" className="hover:text-white transition">Stories</Link>
         </nav>
+        
         <div className="flex gap-4 items-center">
-          {!loading && (
-            user ? (
-              <>
-                <span className="hidden sm:inline text-sm font-medium text-slate-400 mr-2">{user.email}</span>
-                <button 
-                  onClick={logout}
-                  className="text-sm font-medium px-5 py-2.5 bg-slate-800 text-slate-200 rounded-lg hover:bg-slate-700 transition border border-slate-700"
-                >
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="text-sm font-medium px-5 py-2.5 text-slate-300 hover:text-white transition">Sign In</Link>
-                <Link href="/login" className="text-sm font-bold px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition shadow-[0_0_15px_rgba(37,99,235,0.5)]">Get Started</Link>
-              </>
-            )
-          )}
+          <Link href="/login" className="text-sm font-medium px-6 py-2.5 text-white border border-slate-600 hover:border-slate-400 rounded-full transition">
+            Sign in
+          </Link>
+          <Link href="/login" className="text-sm font-bold px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white rounded-full transition shadow-lg">
+            Create free account
+          </Link>
         </div>
       </div>
     </header>
